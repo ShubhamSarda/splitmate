@@ -1,6 +1,16 @@
 // Single source of truth for all localStorage access.
 // Nothing else in the app should read or write localStorage directly.
 
+export const CATEGORIES = [
+  'Food & Drinks',
+  'Transport',
+  'Accommodation',
+  'Activities',
+  'Shopping',
+  'Utilities',
+  'Other',
+]
+
 const KEYS = {
   USERS: 'splitmate.users',
   GROUPS: 'splitmate.groups',
@@ -205,7 +215,7 @@ export const storage = {
       (e) => e.groupId === groupId && !e.isDeleted
     )
   },
-  createExpense({ groupId, description, amount, paidBy, date, splits, splitMode, createdBy }) {
+  createExpense({ groupId, description, amount, paidBy, date, splits, splitMode, createdBy, category }) {
     const expenses = this.getExpenses()
     const expense = {
       id: uid(),
@@ -216,6 +226,7 @@ export const storage = {
       date,
       splits: splits.map((s) => ({ userId: s.userId, amount: Number(s.amount) })),
       splitMode,
+      category: category ?? 'Other',
       createdBy: createdBy ?? paidBy,
       isDeleted: false,
       createdAt: Date.now(),

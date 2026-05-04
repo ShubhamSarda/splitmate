@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { storage } from '../data/storage'
+import { storage, CATEGORIES } from '../data/storage'
 import { todayISO, formatCurrency } from '../lib/format'
 
 // Distribute the remainder cent across the first members so the splits
@@ -51,6 +51,7 @@ export default function AddExpenseModal({ group, currentUserId, onClose, onSaved
     }
     return out
   })
+  const [category, setCategory] = useState(existingExpense?.category ?? 'Other')
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -200,6 +201,7 @@ export default function AddExpenseModal({ group, currentUserId, onClose, onSaved
       date,
       splits,
       splitMode,
+      category,
       createdBy: existingExpense?.createdBy ?? currentUserId,
     })
     onSaved()
@@ -236,6 +238,15 @@ export default function AddExpenseModal({ group, currentUserId, onClose, onSaved
               autoFocus
               className="field"
             />
+          </label>
+
+          <label className="block">
+            <span className="field-label">Category</span>
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className="field">
+              {CATEGORIES.map((c) => (
+                <option key={c}>{c}</option>
+              ))}
+            </select>
           </label>
 
           <div className="grid grid-cols-2 gap-3">
