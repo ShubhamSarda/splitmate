@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, Navigate, useNavigate } from 'react-router-dom'
+import { LogIn } from 'lucide-react'
 import { useAuth } from '../context/useAuth'
 
 export default function Login() {
@@ -23,8 +24,8 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-canvas">
       <div className="page flex flex-col items-center pt-16 pb-10">
-        <Link to="/" className="text-base font-bold tracking-tight text-ink">
-          Splitmate
+        <Link to="/">
+          <img src="/logo.png" alt="Splitmate" className="h-8 w-auto" />
         </Link>
         <div className="mt-8 w-full max-w-[400px] card">
           <h1 className="text-xl font-bold text-ink">Sign in</h1>
@@ -41,7 +42,8 @@ export default function Login() {
             {error && (
               <div className="rounded-lg bg-neg-bg px-3 py-2 text-sm text-neg">{error}</div>
             )}
-            <button type="submit" className="btn-primary w-full">
+            <button type="submit" className="btn-primary w-full gap-2">
+              <LogIn size={16} />
               Sign in
             </button>
           </form>

@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
+import { Plus } from 'lucide-react'
 import { useAuth } from '../context/useAuth'
 import { storage } from '../data/storage'
 import { userBalanceInGroup } from '../lib/balances'
@@ -32,7 +33,8 @@ export default function Dashboard() {
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold tracking-tight text-ink">Your groups</h1>
           {data.cards.length > 0 && (
-            <Link to="/group/new" className="btn-primary">
+            <Link to="/group/new" className="btn-primary gap-2">
+              <Plus size={16} />
               Create group
             </Link>
           )}
@@ -124,7 +126,8 @@ function EmptyState() {
         <p className="mx-auto mt-2 max-w-sm text-sm text-ink-muted">
           Create your first group to start tracking shared expenses.
         </p>
-        <Link to="/group/new" className="btn-primary mt-6 inline-flex">
+        <Link to="/group/new" className="btn-primary mt-6 inline-flex gap-2">
+          <Plus size={16} />
           Create group
         </Link>
       </div>

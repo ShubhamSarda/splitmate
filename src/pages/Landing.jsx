@@ -10,7 +10,7 @@ export default function Landing() {
     <div className="min-h-screen bg-canvas">
       <header className="h-14 border-b border-line bg-surface">
         <div className="page flex h-full items-center justify-between">
-          <span className="text-base font-bold tracking-tight text-ink">Splitmate</span>
+          <img src="/logo.png" alt="Splitmate" className="h-8 w-auto" />
           <Link
             to="/login"
             className="text-sm text-ink-muted transition-colors hover:text-ink-soft"

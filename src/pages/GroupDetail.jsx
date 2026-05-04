@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Link, useParams, Navigate } from 'react-router-dom'
+import { PlusCircle } from 'lucide-react'
 import { useAuth } from '../context/useAuth'
 import { storage } from '../data/storage'
 import { calculateNetBalances, settleDebts } from '../lib/balances'
@@ -65,7 +66,8 @@ export default function GroupDetail() {
           </Link>
           <div className="mt-3 flex items-start justify-between gap-4">
             <h1 className="text-xl font-bold tracking-tight text-ink">{group.name}</h1>
-            <button onClick={() => setShowModal(true)} className="btn-primary shrink-0">
+            <button onClick={() => setShowModal(true)} className="btn-primary shrink-0 gap-2">
+              <PlusCircle size={16} />
               Add expense
             </button>
           </div>
