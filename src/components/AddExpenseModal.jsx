@@ -52,6 +52,7 @@ export default function AddExpenseModal({ group, currentUserId, onClose, onSaved
     return out
   })
   const [category, setCategory] = useState(existingExpense?.category ?? 'Other')
+  const [notes, setNotes] = useState(existingExpense?.notes ?? '')
   const [error, setError] = useState('')
 
   useEffect(() => {
@@ -202,6 +203,7 @@ export default function AddExpenseModal({ group, currentUserId, onClose, onSaved
       splits,
       splitMode,
       category,
+      notes,
       createdBy: existingExpense?.createdBy ?? currentUserId,
     })
     onSaved()
@@ -247,6 +249,17 @@ export default function AddExpenseModal({ group, currentUserId, onClose, onSaved
                 <option key={c}>{c}</option>
               ))}
             </select>
+          </label>
+
+          <label className="block">
+            <span className="field-label">Notes <span className="font-normal text-ink-muted">(optional)</span></span>
+            <textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Any extra details…"
+              rows={2}
+              className="field resize-none"
+            />
           </label>
 
           <div className="grid grid-cols-2 gap-3">

@@ -215,7 +215,7 @@ export const storage = {
       (e) => e.groupId === groupId && !e.isDeleted
     )
   },
-  createExpense({ groupId, description, amount, paidBy, date, splits, splitMode, createdBy, category }) {
+  createExpense({ groupId, description, amount, paidBy, date, splits, splitMode, createdBy, category, notes }) {
     const expenses = this.getExpenses()
     const expense = {
       id: uid(),
@@ -227,6 +227,7 @@ export const storage = {
       splits: splits.map((s) => ({ userId: s.userId, amount: Number(s.amount) })),
       splitMode,
       category: category ?? 'Other',
+      notes: notes?.trim() ?? '',
       createdBy: createdBy ?? paidBy,
       isDeleted: false,
       createdAt: Date.now(),

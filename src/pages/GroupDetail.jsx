@@ -233,6 +233,9 @@ function Expenses({ expenses, nameFor, onDelete, currentUserId, onEdit }) {
                 <div className="mt-0.5 text-xs text-ink-muted">
                   {nameFor(e.paidBy)} paid · {formatDate(e.date)}
                 </div>
+                {e.notes && (
+                  <div className="mt-0.5 text-xs text-ink-muted italic">{e.notes}</div>
+                )}
                 {e.splits && e.splits.length > 0 && (
                   <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-ink-muted">
                     {e.splits.map((split) => (
