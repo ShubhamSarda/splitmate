@@ -14,7 +14,7 @@
 - [ ] paidBy stores member.id (group-scoped) — NOT userId
 - [ ] splits[].memberId stores member.id (group-scoped) — NOT userId
 - [ ] balance.js reads splits[].amount directly — never divides expense.amount
-- [ ] linkPendingMembers() is called on every registration path
+- [ ] storage._upgradePendingMembers() is called on every registration path
 - [ ] Dashboard filter: group.members.some(m => m.userId === user.id)
 
 ## Security
