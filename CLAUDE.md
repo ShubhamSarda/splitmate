@@ -23,7 +23,11 @@ Splitmate is a fully client-side expense-splitting app. There is no backend — 
 - A `storage` object with methods for users, groups, expenses, and session
 - A `CATEGORIES` constant (used in `AddExpenseModal` and expense display)
 
-`storage.init()` is called once on app mount (inside `AuthProvider`). It seeds 4 demo accounts if `splitmate.seeded` is not set, and runs a one-time migration for the old `sharedWith` → `splits` format.
+`storage.init()` is called once on app mount (inside `AuthProvider`). It seeds 4 demo accounts if `splitmate.seeded` is not set, and runs a one-time migration for the old `sharedWith` → `splits` format (guarded by `splitmate.expenses.migrated.splits`).
+
+**localStorage keys**: `splitmate.users`, `splitmate.groups`, `splitmate.expenses`, `splitmate.currentUserId`, `splitmate.seeded`, `splitmate.expenses.migrated.splits`.
+
+**Expense object shape**: `{ id, groupId, description, amount, paidBy, date, splits, splitMode, category, notes, createdBy, isDeleted, createdAt }`. `notes` is optional (empty string default, trimmed on save). `category` defaults to `'Other'`.
 
 ### Auth
 
