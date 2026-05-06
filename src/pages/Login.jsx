@@ -1,24 +1,27 @@
-import { useState } from 'react'
-import { Link, Navigate, useNavigate } from 'react-router-dom'
-import { LogIn } from 'lucide-react'
-import { useAuth } from '../context/useAuth'
+import { useState } from "react";
+import { Link, Navigate, useNavigate } from "react-router-dom";
+import { LogIn } from "lucide-react";
+import { useAuth } from "../context/useAuth";
 
 export default function Login() {
-  const { user, ready, login } = useAuth()
-  const navigate = useNavigate()
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
+  const { user, ready, login } = useAuth();
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  if (!ready) return null
-  if (user) return <Navigate to="/dashboard" replace />
+  if (!ready) return null;
+  if (user) return <Navigate to="/dashboard" replace />;
 
-  function handleSubmit(e) {
-    e.preventDefault()
-    setError('')
-    const result = login(email, password)
-    if (result.ok) navigate('/dashboard')
-    else setError(result.error)
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+    const result = await login(email, password);
+    setLoading(false);
+    if (result.ok) navigate("/dashboard");
+    else setError(result.error);
   }
 
   return (
@@ -32,7 +35,13 @@ export default function Login() {
           <p className="mt-1 text-sm text-ink-soft">Welcome back.</p>
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
-            <Field label="Email" type="email" value={email} onChange={setEmail} autoFocus />
+            <Field
+              label="Email"
+              type="email"
+              value={email}
+              onChange={setEmail}
+              autoFocus
+            />
             <Field
               label="Password"
               type="password"
@@ -40,24 +49,30 @@ export default function Login() {
               onChange={setPassword}
             />
             {error && (
-              <div className="rounded-lg bg-neg-bg px-3 py-2 text-sm text-neg">{error}</div>
+              <div className="rounded-lg bg-neg-bg px-3 py-2 text-sm text-neg">
+                {error}
+              </div>
             )}
-            <button type="submit" className="btn-primary w-full gap-2">
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-primary w-full gap-2"
+            >
               <LogIn size={16} />
-              Sign in
+              {loading ? "Signing in…" : "Sign in"}
             </button>
           </form>
         </div>
 
         <p className="mt-6 text-sm text-ink-soft">
-          Don't have an account?{' '}
+          Don't have an account?{" "}
           <Link to="/register" className="btn-link">
             Create one
           </Link>
         </p>
       </div>
     </div>
-  )
+  );
 }
 
 function Field({ label, type, value, onChange, autoFocus }) {
@@ -72,5 +87,5 @@ function Field({ label, type, value, onChange, autoFocus }) {
         className="field"
       />
     </label>
-  )
+  );
 }

@@ -1,247 +1,337 @@
-// Single source of truth for all localStorage access.
-// Nothing else in the app should read or write localStorage directly.
+import { supabase } from "../lib/supabase";
 
 export const CATEGORIES = [
-  'Food & Drinks',
-  'Transport',
-  'Accommodation',
-  'Activities',
-  'Shopping',
-  'Utilities',
-  'Other',
-]
+  "Food & Drinks",
+  "Transport",
+  "Accommodation",
+  "Activities",
+  "Shopping",
+  "Utilities",
+  "Other",
+];
 
-const KEYS = {
-  USERS: 'splitmate.users',
-  GROUPS: 'splitmate.groups',
-  EXPENSES: 'splitmate.expenses',
-  CURRENT_USER: 'splitmate.currentUserId',
-  SEEDED: 'splitmate.seeded',
-  EXPENSES_MIGRATED_SPLITS: 'splitmate.expenses.migrated.splits',
+// ---------------------------------------------------------------------------
+// In-memory cache — components read synchronously; all writes go to Supabase
+// in the background via fire-and-forget async helpers.
+// ---------------------------------------------------------------------------
+let _users = [];
+let _groups = [];
+let _expenses = []; // only non-deleted; softDeleteExpense splices in place
+
+// Tracks in-flight _persistGroup promises so _persistExpense can await the
+// parent group write before inserting (prevents FK constraint failures when
+// both writes race to the DB after an immediate createGroup → createExpense).
+const _pendingGroupWrites = new Map();
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function isUUID(str) {
+  return (
+    typeof str === "string" &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str)
+  );
 }
 
-function read(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key)
-    return raw ? JSON.parse(raw) : fallback
-  } catch {
-    return fallback
-  }
+function toGroup(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    createdBy: row.created_by,
+    createdAt: new Date(row.created_at).getTime(),
+    members: (row.group_members ?? []).map((m) => ({
+      userId: m.user_id,
+      email: m.email,
+      name: m.name,
+      status: m.status,
+    })),
+  };
 }
 
-function write(key, value) {
-  localStorage.setItem(key, JSON.stringify(value))
+function toExpense(row) {
+  return {
+    id: row.id,
+    groupId: row.group_id,
+    description: row.description,
+    amount: Number(row.amount),
+    paidBy: row.paid_by,
+    date: row.date,
+    splitMode: row.split_mode,
+    category: row.category,
+    notes: row.notes ?? "",
+    createdBy: row.created_by,
+    isDeleted: row.is_deleted,
+    createdAt: new Date(row.created_at).getTime(),
+    // pending members have user_id = null in the DB; use their email as the
+    // split key so balances.js can match them to the group member record.
+    splits: (row.expense_splits ?? []).map((s) => ({
+      userId: s.user_id ?? s.email,
+      amount: Number(s.amount),
+    })),
+  };
 }
 
-function uid() {
-  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36)
-}
-
-// Equal split with the remainder cent distributed to the first members so
-// the splits sum to exactly the total (no penny dust).
-function buildEqualSplits(amount, userIds) {
-  const cents = Math.round(Number(amount) * 100)
-  const n = userIds.length
-  const base = Math.floor(cents / n)
-  const remainder = cents - base * n
-  return userIds.map((userId, i) => ({
-    userId,
-    amount: (base + (i < remainder ? 1 : 0)) / 100,
-  }))
-}
-
-function normalizeEmail(email) {
-  return email.trim().toLowerCase()
-}
-
-const SEED_USERS = [
-  { name: 'Shubham', email: 'shubham@test.com', password: 'password' },
-  { name: 'Bob', email: 'bob@test.com', password: 'password' },
-  { name: 'Rahul', email: 'rahul@test.com', password: 'password' },
-  { name: 'Eva', email: 'eva@test.com', password: 'password' },
-]
+// ---------------------------------------------------------------------------
+// Public API
+// ---------------------------------------------------------------------------
 
 export const storage = {
-  init() {
-    if (!localStorage.getItem(KEYS.SEEDED)) {
-      const users = SEED_USERS.map((u) => ({
-        id: uid(),
-        name: u.name,
-        email: normalizeEmail(u.email),
-        password: u.password,
-        createdAt: Date.now(),
-      }))
-      write(KEYS.USERS, users)
-      if (!localStorage.getItem(KEYS.GROUPS)) write(KEYS.GROUPS, [])
-      if (!localStorage.getItem(KEYS.EXPENSES)) write(KEYS.EXPENSES, [])
-      localStorage.setItem(KEYS.SEEDED, '1')
+  // Loads all data for `userId` from Supabase into the cache.
+  // AuthProvider awaits this before setting ready = true.
+  async init(userId) {
+    if (!userId) return;
+
+    // All users visible to this account (permissive RLS allows lookup for invites)
+    const { data: users } = await supabase
+      .from("users")
+      .select("id, name, email");
+    _users = users ?? [];
+
+    // Groups this user is a member of
+    const { data: memberships } = await supabase
+      .from("group_members")
+      .select("group_id")
+      .eq("user_id", userId);
+    const groupIds = (memberships ?? []).map((m) => m.group_id);
+
+    if (groupIds.length === 0) {
+      _groups = [];
+      _expenses = [];
+      return;
     }
-    this._migrateExpensesToSplits()
+
+    // Groups with all their members in one query
+    const { data: groups } = await supabase
+      .from("groups")
+      .select(
+        "id, name, created_by, created_at, group_members(user_id, email, name, status)",
+      )
+      .in("id", groupIds);
+    _groups = (groups ?? []).map(toGroup);
+
+    // Non-deleted expenses with splits in one query
+    const { data: expenses } = await supabase
+      .from("expenses")
+      .select(
+        "id, group_id, description, amount, paid_by, date, split_mode, category, notes, created_by, is_deleted, created_at, expense_splits(user_id, email, amount)",
+      )
+      .in("group_id", groupIds)
+      .eq("is_deleted", false);
+    _expenses = (expenses ?? []).map(toExpense);
   },
 
-  _migrateExpensesToSplits() {
-    if (localStorage.getItem(KEYS.EXPENSES_MIGRATED_SPLITS)) return
-    const expenses = this.getExpenses()
-    let changed = false
-    for (const e of expenses) {
-      if (Array.isArray(e.splits)) continue
-      const ids = Array.isArray(e.sharedWith) ? e.sharedWith : []
-      e.splits = ids.length ? buildEqualSplits(e.amount, ids) : []
-      e.splitMode = 'equal'
-      delete e.sharedWith
-      changed = true
-    }
-    if (changed) write(KEYS.EXPENSES, expenses)
-    localStorage.setItem(KEYS.EXPENSES_MIGRATED_SPLITS, '1')
+  // Called on logout to wipe cached data.
+  clear() {
+    _users = [];
+    _groups = [];
+    _expenses = [];
   },
 
   // ---------- Users ----------
   getUsers() {
-    return read(KEYS.USERS, [])
+    return _users;
   },
   getUserById(id) {
-    return this.getUsers().find((u) => u.id === id) || null
+    return _users.find((u) => u.id === id) || null;
   },
   getUserByEmail(email) {
-    const e = normalizeEmail(email)
-    return this.getUsers().find((u) => u.email === e) || null
-  },
-  createUser({ name, email, password }) {
-    const users = this.getUsers()
-    const newUser = {
-      id: uid(),
-      name: name.trim(),
-      email: normalizeEmail(email),
-      password,
-      createdAt: Date.now(),
-    }
-    users.push(newUser)
-    write(KEYS.USERS, users)
-    this._upgradePendingMembers(newUser)
-    return newUser
-  },
-  _upgradePendingMembers(user) {
-    const groups = this.getGroups()
-    let changed = false
-    for (const g of groups) {
-      for (const m of g.members) {
-        if (m.status === 'pending' && m.email === user.email) {
-          m.userId = user.id
-          m.name = user.name
-          m.status = 'active'
-          changed = true
-        }
-      }
-    }
-    if (changed) write(KEYS.GROUPS, groups)
+    const e = email.trim().toLowerCase();
+    return _users.find((u) => u.email === e) || null;
   },
 
-  // ---------- Session ----------
+  // ---------- Session — no-ops; Supabase Auth owns the session ----------
   getCurrentUserId() {
-    return localStorage.getItem(KEYS.CURRENT_USER)
+    return null;
   },
-  setCurrentUserId(id) {
-    if (id) localStorage.setItem(KEYS.CURRENT_USER, id)
-    else localStorage.removeItem(KEYS.CURRENT_USER)
-  },
+  setCurrentUserId() {},
 
   // ---------- Groups ----------
   getGroups() {
-    return read(KEYS.GROUPS, [])
+    return _groups;
   },
   getGroupById(id) {
-    return this.getGroups().find((g) => g.id === id) || null
+    return _groups.find((g) => g.id === id) || null;
   },
   getGroupsForUser(userId) {
-    return this.getGroups().filter((g) =>
-      g.members.some((m) => m.userId === userId)
-    )
+    return _groups.filter((g) => g.members.some((m) => m.userId === userId));
   },
-  createGroup({ name, createdBy, memberEmails }) {
-    const creator = this.getUserById(createdBy)
-    if (!creator) throw new Error('Creator not found')
 
-    const seen = new Set([creator.email])
+  createGroup({ name, createdBy, memberEmails }) {
+    const creator = this.getUserById(createdBy);
+    if (!creator) throw new Error("Creator not found");
+
+    const seen = new Set([creator.email]);
     const members = [
       {
         userId: creator.id,
         email: creator.email,
         name: creator.name,
-        status: 'active',
+        status: "active",
       },
-    ]
-
+    ];
     for (const rawEmail of memberEmails) {
-      const email = normalizeEmail(rawEmail)
-      if (!email || seen.has(email)) continue
-      seen.add(email)
-      const existing = this.getUserByEmail(email)
-      if (existing) {
-        members.push({
-          userId: existing.id,
-          email: existing.email,
-          name: existing.name,
-          status: 'active',
-        })
-      } else {
-        members.push({
-          userId: null,
-          email,
-          name: null,
-          status: 'pending',
-        })
-      }
+      const email = rawEmail.trim().toLowerCase();
+      if (!email || seen.has(email)) continue;
+      seen.add(email);
+      const existing = this.getUserByEmail(email);
+      members.push(
+        existing
+          ? {
+              userId: existing.id,
+              email: existing.email,
+              name: existing.name,
+              status: "active",
+            }
+          : { userId: null, email, name: null, status: "pending" },
+      );
     }
 
     const group = {
-      id: uid(),
+      id: crypto.randomUUID(),
       name: name.trim(),
       createdBy,
       createdAt: Date.now(),
       members,
-    }
-    const groups = this.getGroups()
-    groups.push(group)
-    write(KEYS.GROUPS, groups)
-    return group
+    };
+    _groups.push(group);
+    const p = this._persistGroup(group).catch((e) =>
+      console.error("_persistGroup failed", e),
+    );
+    _pendingGroupWrites.set(group.id, p);
+    p.finally(() => _pendingGroupWrites.delete(group.id));
+    return group;
+  },
+
+  async _persistGroup(group) {
+    const { error: gErr } = await supabase.from("groups").insert({
+      id: group.id,
+      name: group.name,
+      created_by: group.createdBy,
+      created_at: new Date(group.createdAt).toISOString(),
+    });
+    if (gErr) throw gErr;
+
+    const rows = group.members.map((m) => ({
+      group_id: group.id,
+      user_id: m.userId,
+      email: m.email,
+      name: m.name,
+      status: m.status,
+    }));
+    const { error: mErr } = await supabase.from("group_members").insert(rows);
+    if (mErr) throw mErr;
   },
 
   // ---------- Expenses ----------
   getExpenses() {
-    return read(KEYS.EXPENSES, [])
+    return _expenses;
   },
+  // _expenses only holds non-deleted rows; no isDeleted filter needed.
   getActiveExpensesForGroup(groupId) {
-    return this.getExpenses().filter(
-      (e) => e.groupId === groupId && !e.isDeleted
-    )
+    return _expenses.filter((e) => e.groupId === groupId);
   },
-  createExpense({ groupId, description, amount, paidBy, date, splits, splitMode, createdBy, category, notes }) {
-    const expenses = this.getExpenses()
+
+  createExpense({
+    groupId,
+    description,
+    amount,
+    paidBy,
+    date,
+    splits,
+    splitMode,
+    createdBy,
+    category,
+    notes,
+  }) {
     const expense = {
-      id: uid(),
+      id: crypto.randomUUID(),
       groupId,
       description: description.trim(),
       amount: Number(amount),
       paidBy,
       date,
-      splits: splits.map((s) => ({ userId: s.userId, amount: Number(s.amount) })),
+      splits: splits.map((s) => ({
+        userId: s.userId,
+        amount: Number(s.amount),
+      })),
       splitMode,
-      category: category ?? 'Other',
-      notes: notes?.trim() ?? '',
+      category: category ?? "Other",
+      notes: notes?.trim() ?? "",
       createdBy: createdBy ?? paidBy,
       isDeleted: false,
       createdAt: Date.now(),
-    }
-    expenses.push(expense)
-    write(KEYS.EXPENSES, expenses)
-    return expense
+    };
+    _expenses.push(expense);
+    this._persistExpense(expense).catch(console.error);
+    return expense;
   },
+
+  async _persistExpense(expense) {
+    // If this group's write is still in-flight, wait for it before inserting
+    // the expense — the FK on expenses.group_id requires the group to exist first.
+    const pendingGroup = _pendingGroupWrites.get(expense.groupId);
+    if (pendingGroup) await pendingGroup;
+
+    const { error: eErr } = await supabase.from("expenses").insert({
+      id: expense.id,
+      group_id: expense.groupId,
+      description: expense.description,
+      amount: expense.amount,
+      paid_by: expense.paidBy,
+      date: expense.date,
+      split_mode: expense.splitMode,
+      category: expense.category,
+      notes: expense.notes,
+      created_by: expense.createdBy,
+      is_deleted: false,
+      created_at: new Date(expense.createdAt).toISOString(),
+    });
+    if (eErr) throw eErr;
+
+    const rows = expense.splits.map((s) => ({
+      expense_id: expense.id,
+      // A split's userId is either a UUID (registered member) or an email
+      // string (pending member). Store accordingly.
+      user_id: isUUID(s.userId) ? s.userId : null,
+      email: isUUID(s.userId) ? null : s.userId,
+      amount: s.amount,
+    }));
+    const { error: sErr } = await supabase.from("expense_splits").insert(rows);
+    if (sErr) throw sErr;
+  },
+
   softDeleteExpense(expenseId) {
-    const expenses = this.getExpenses()
-    const e = expenses.find((x) => x.id === expenseId)
-    if (e && !e.isDeleted) {
-      e.isDeleted = true
-      write(KEYS.EXPENSES, expenses)
+    const idx = _expenses.findIndex((e) => e.id === expenseId);
+    if (idx !== -1) _expenses.splice(idx, 1);
+
+    supabase
+      .from("expenses")
+      .update({ is_deleted: true })
+      .eq("id", expenseId)
+      .then(({ error }) => {
+        if (error) console.error("softDeleteExpense failed", error);
+      });
+  },
+
+  // Flip pending group memberships to active after a new user registers.
+  // Called (and awaited) by AuthProvider's register() before re-initialising.
+  async _upgradePendingMembers(user) {
+    const { error } = await supabase
+      .from("group_members")
+      .update({ user_id: user.id, name: user.name, status: "active" })
+      .eq("email", user.email)
+      .eq("status", "pending");
+    if (error) console.error("_upgradePendingMembers failed", error);
+
+    for (const g of _groups) {
+      for (const m of g.members) {
+        if (m.status === "pending" && m.email === user.email) {
+          m.userId = user.id;
+          m.name = user.name;
+          m.status = "active";
+        }
+      }
     }
   },
-}
+};
