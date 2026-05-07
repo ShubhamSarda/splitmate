@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Link, useParams, Navigate } from "react-router-dom";
 import { PlusCircle, Settings } from "lucide-react";
+import { Download } from "lucide-react";
 import { useAuth } from "../context/useAuth";
 import { storage } from "../data/storage";
+import { downloadGroupHistory } from "../utils/groupExport";
 import { calculateNetBalances, settleDebts } from "../lib/balances";
 import { formatCurrency, formatDate } from "../lib/format";
 import AppHeader from "../components/AppHeader";
@@ -86,6 +88,19 @@ export default function GroupDetail() {
                   Settings
                 </Link>
               )}
+              <button
+                onClick={() => downloadGroupHistory(group.id, group.name)}
+                disabled={expenses.length === 0}
+                title={
+                  expenses.length === 0
+                    ? "No expenses to export"
+                    : "Download CSV"
+                }
+                className="btn-secondary gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Download size={16} />
+                Export history
+              </button>
               <button
                 onClick={() => setShowModal(true)}
                 className="btn-primary gap-2"

@@ -80,6 +80,15 @@ Auth state lives in `src/context/` split across three files:
 
 **Equal split math**: done in integer cents (`Math.round(amount * 100)`) with remainder distributed to the first N members, so splits always sum to the exact total.
 
+### Utilities
+
+**`src/utils/groupExport.js`** — CSV export for group expense history:
+
+- `exportGroupHistory(groupId)` — returns a sorted (by date) array of plain objects `{ date, description, category, amount, paidBy, splitBetween, notes }` with member UUIDs/emails resolved to display names
+- `downloadGroupHistory(groupId, groupName)` — builds a CSV string from the above, triggers a browser download as `splitmate-<group-name>-history.csv`
+
+The "Export history" button in `GroupDetail.jsx` calls `downloadGroupHistory` and is disabled (with `disabled:opacity-40 disabled:cursor-not-allowed`) when the group has no active expenses.
+
 ### Routes
 
 | Path                  | Component       | Auth                                                          |
