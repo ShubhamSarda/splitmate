@@ -17,6 +17,7 @@ export const CATEGORIES = [
 let _users = [];
 let _groups = [];
 let _expenses = []; // only non-deleted; softDeleteExpense splices in place
+let _settlements = [];
 
 // Tracks in-flight _persistGroup promises so _persistExpense can await the
 // parent group write before inserting (prevents FK constraint failures when
@@ -98,6 +99,7 @@ export const storage = {
     if (groupIds.length === 0) {
       _groups = [];
       _expenses = [];
+      _settlements = [];
       return;
     }
 
@@ -119,6 +121,20 @@ export const storage = {
       .in("group_id", groupIds)
       .eq("is_deleted", false);
     _expenses = (expenses ?? []).map(toExpense);
+
+    // Settlements for all groups the user belongs to
+    const { data: settlements } = await supabase
+      .from("settlements")
+      .select("id, group_id, paid_by, paid_to, amount, settled_at")
+      .in("group_id", groupIds);
+    _settlements = (settlements ?? []).map((r) => ({
+      id: r.id,
+      groupId: r.group_id,
+      paidBy: r.paid_by,
+      paidTo: r.paid_to,
+      amount: Number(r.amount),
+      settledAt: new Date(r.settled_at).getTime(),
+    }));
   },
 
   // Called on logout to wipe cached data.
@@ -126,6 +142,7 @@ export const storage = {
     _users = [];
     _groups = [];
     _expenses = [];
+    _settlements = [];
   },
 
   // ---------- Users ----------
@@ -312,6 +329,83 @@ export const storage = {
       .then(({ error }) => {
         if (error) console.error("softDeleteExpense failed", error);
       });
+  },
+
+  // Rename a group — updates the `groups` table and the in-memory cache.
+  async renameGroup(groupId, newName) {
+    const trimmed = newName.trim();
+    if (!trimmed) throw new Error("Name cannot be empty.");
+
+    const group = _groups.find((g) => g.id === groupId);
+    if (!group) throw new Error("Group not found.");
+
+    const { error } = await supabase
+      .from("groups")
+      .update({ name: trimmed })
+      .eq("id", groupId);
+    if (error) throw error;
+
+    group.name = trimmed;
+  },
+
+  // Remove a member from a group — deletes from `group_members` and removes
+  // from the in-memory cache.  Callers must verify the member has no expense
+  // involvement before calling this.
+  async removeMember(groupId, memberId) {
+    const group = _groups.find((g) => g.id === groupId);
+    if (!group) throw new Error("Group not found.");
+
+    // memberId may be a UUID (active member) or an email string (pending member)
+    const isUUIDMember = isUUID(memberId);
+
+    const query = supabase
+      .from("group_members")
+      .delete()
+      .eq("group_id", groupId);
+    const { error } = isUUIDMember
+      ? await query.eq("user_id", memberId)
+      : await query.eq("email", memberId);
+    if (error) throw error;
+
+    group.members = group.members.filter((m) =>
+      isUUIDMember ? m.userId !== memberId : m.email !== memberId,
+    );
+  },
+
+  // ---------- Settlements ----------
+  getSettlementsForGroup(groupId) {
+    return _settlements.filter((s) => s.groupId === groupId);
+  },
+
+  // Records a settlement: the current user (paidBy) paid `amount` to `paidTo`.
+  // Optimistically updates the cache, then persists to Supabase.
+  async recordSettlement(groupId, paidBy, paidTo, amount) {
+    const settlement = {
+      id: crypto.randomUUID(),
+      groupId,
+      paidBy,
+      paidTo,
+      amount: Number(amount),
+      settledAt: Date.now(),
+    };
+    _settlements.push(settlement);
+
+    const { error } = await supabase.from("settlements").insert({
+      id: settlement.id,
+      group_id: settlement.groupId,
+      paid_by: settlement.paidBy,
+      paid_to: settlement.paidTo,
+      amount: settlement.amount,
+      settled_at: new Date(settlement.settledAt).toISOString(),
+    });
+    if (error) {
+      // Roll back the optimistic update on failure
+      const idx = _settlements.findIndex((s) => s.id === settlement.id);
+      if (idx !== -1) _settlements.splice(idx, 1);
+      throw error;
+    }
+
+    return settlement;
   },
 
   // Flip pending group memberships to active after a new user registers.

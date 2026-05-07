@@ -1,57 +1,65 @@
-import { useState } from 'react'
-import { Link, useParams, Navigate } from 'react-router-dom'
-import { PlusCircle } from 'lucide-react'
-import { useAuth } from '../context/useAuth'
-import { storage } from '../data/storage'
-import { calculateNetBalances, settleDebts } from '../lib/balances'
-import { formatCurrency, formatDate } from '../lib/format'
-import AppHeader from '../components/AppHeader'
-import AddExpenseModal from '../components/AddExpenseModal'
-import Avatar from '../components/Avatar'
+import { useState } from "react";
+import { Link, useParams, Navigate } from "react-router-dom";
+import { PlusCircle, Settings } from "lucide-react";
+import { useAuth } from "../context/useAuth";
+import { storage } from "../data/storage";
+import { calculateNetBalances, settleDebts } from "../lib/balances";
+import { formatCurrency, formatDate } from "../lib/format";
+import AppHeader from "../components/AppHeader";
+import AddExpenseModal from "../components/AddExpenseModal";
+import Avatar from "../components/Avatar";
 
 export default function GroupDetail() {
-  const { id } = useParams()
-  const { user } = useAuth()
-  const [, setVersion] = useState(0)
-  const [showModal, setShowModal] = useState(false)
-  const [editingExpense, setEditingExpense] = useState(null)
+  const { id } = useParams();
+  const { user } = useAuth();
+  const [, setVersion] = useState(0);
+  const [showModal, setShowModal] = useState(false);
+  const [editingExpense, setEditingExpense] = useState(null);
 
-  const group = storage.getGroupById(id)
-  if (!group) return <Navigate to="/dashboard" replace />
+  const group = storage.getGroupById(id);
+  if (!group) return <Navigate to="/dashboard" replace />;
 
-  const isMember = group.members.some((m) => m.userId === user.id)
-  if (!isMember) return <Navigate to="/dashboard" replace />
+  const isMember = group.members.some((m) => m.userId === user.id);
+  if (!isMember) return <Navigate to="/dashboard" replace />;
 
-  const expenses = storage.getActiveExpensesForGroup(group.id)
-  const balances = calculateNetBalances(expenses, group.members)
-  const settlements = settleDebts(balances)
+  const expenses = storage.getActiveExpensesForGroup(group.id);
+  const groupSettlements = storage.getSettlementsForGroup(group.id);
+  const balances = calculateNetBalances(
+    expenses,
+    group.members,
+    groupSettlements,
+  );
+  const settlements = settleDebts(balances);
 
   function refresh() {
-    setVersion((v) => v + 1)
+    setVersion((v) => v + 1);
   }
 
   function nameFor(idOrEmail) {
-    if (idOrEmail === user.id) return 'You'
+    if (idOrEmail === user.id) return "You";
     // Pending members are keyed by email in balances/splits, so match either.
     const m = group.members.find(
-      (x) => x.userId === idOrEmail || x.email === idOrEmail
-    )
+      (x) => x.userId === idOrEmail || x.email === idOrEmail,
+    );
     // After a pending member registers, their old splits still hold their email.
     // Resolve through the member record so the current user still sees "You".
-    if (m?.userId === user.id) return 'You'
-    return m?.name || m?.email || 'Someone'
+    if (m?.userId === user.id) return "You";
+    return m?.name || m?.email || "Someone";
   }
 
   function handleDelete(expenseId) {
-    if (!confirm('Delete this expense? It will no longer count toward balances.')) return
-    storage.softDeleteExpense(expenseId)
-    refresh()
+    if (
+      !confirm("Delete this expense? It will no longer count toward balances.")
+    )
+      return;
+    storage.softDeleteExpense(expenseId);
+    refresh();
   }
 
   const sortedExpenses = [...expenses].sort((a, b) => {
-    if (a.date !== b.date) return a.date < b.date ? 1 : -1
-    return b.createdAt - a.createdAt
-  })
+    if (a.date !== b.date) return a.date < b.date ? 1 : -1;
+    return b.createdAt - a.createdAt;
+  });
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -65,11 +73,27 @@ export default function GroupDetail() {
             ← Back to dashboard
           </Link>
           <div className="mt-3 flex items-start justify-between gap-4">
-            <h1 className="text-xl font-bold tracking-tight text-ink">{group.name}</h1>
-            <button onClick={() => setShowModal(true)} className="btn-primary shrink-0 gap-2">
-              <PlusCircle size={16} />
-              Add expense
-            </button>
+            <h1 className="text-xl font-bold tracking-tight text-ink">
+              {group.name}
+            </h1>
+            <div className="flex shrink-0 items-center gap-2">
+              {group.createdBy === user.id && (
+                <Link
+                  to={`/group/${id}/settings`}
+                  className="btn-secondary gap-2"
+                >
+                  <Settings size={16} />
+                  Settings
+                </Link>
+              )}
+              <button
+                onClick={() => setShowModal(true)}
+                className="btn-primary gap-2"
+              >
+                <PlusCircle size={16} />
+                Add expense
+              </button>
+            </div>
           </div>
         </div>
 
@@ -77,6 +101,8 @@ export default function GroupDetail() {
           settlements={settlements}
           currentUserId={user.id}
           nameFor={nameFor}
+          groupId={group.id}
+          onSettle={refresh}
         />
 
         <Members members={group.members} />
@@ -96,36 +122,57 @@ export default function GroupDetail() {
           currentUserId={user.id}
           existingExpense={editingExpense}
           onClose={() => {
-            setShowModal(false)
-            setEditingExpense(null)
+            setShowModal(false);
+            setEditingExpense(null);
           }}
           onSaved={() => {
-            setShowModal(false)
-            setEditingExpense(null)
-            refresh()
+            setShowModal(false);
+            setEditingExpense(null);
+            refresh();
           }}
         />
       )}
     </div>
-  )
+  );
 }
 
-function BalanceSummary({ settlements, currentUserId, nameFor }) {
+function BalanceSummary({
+  settlements,
+  currentUserId,
+  nameFor,
+  groupId,
+  onSettle,
+}) {
+  const [settling, setSettling] = useState(null); // settlement index being processed
+
   if (settlements.length === 0) {
     return (
       <section className="card">
         <SectionLabel>Balances</SectionLabel>
         <p className="mt-3 text-sm text-ink-muted">All settled up.</p>
       </section>
-    )
+    );
   }
 
   const involves = settlements.filter(
-    (s) => s.from === currentUserId || s.to === currentUserId
-  )
+    (s) => s.from === currentUserId || s.to === currentUserId,
+  );
   const others = settlements.filter(
-    (s) => s.from !== currentUserId && s.to !== currentUserId
-  )
+    (s) => s.from !== currentUserId && s.to !== currentUserId,
+  );
+
+  async function handleSettle(s, i) {
+    setSettling(i);
+    try {
+      await storage.recordSettlement(groupId, s.from, s.to, s.amount);
+      onSettle();
+    } catch (err) {
+      console.error("recordSettlement failed", err);
+      alert("Could not record settlement. Please try again.");
+    } finally {
+      setSettling(null);
+    }
+  }
 
   return (
     <section className="card">
@@ -133,29 +180,44 @@ function BalanceSummary({ settlements, currentUserId, nameFor }) {
       {involves.length > 0 && (
         <ul className="mt-3 divide-y divide-line">
           {involves.map((s, i) => {
-            const youOwe = s.from === currentUserId
+            const youOwe = s.from === currentUserId;
+            const isSettling = settling === i;
             return (
-              <li key={i} className="flex items-center justify-between gap-3 py-3 first:pt-0">
+              <li
+                key={i}
+                className="flex items-center justify-between gap-3 py-3 first:pt-0"
+              >
                 <span className="text-base text-ink">
                   {youOwe ? (
                     <>
-                      You owe <span className="font-semibold">{nameFor(s.to)}</span>
+                      You owe{" "}
+                      <span className="font-semibold">{nameFor(s.to)}</span>
                     </>
                   ) : (
                     <>
-                      <span className="font-semibold">{nameFor(s.from)}</span> owes you
+                      <span className="font-semibold">{nameFor(s.from)}</span>{" "}
+                      owes you
                     </>
                   )}
                 </span>
-                <span
-                  className={`text-2xl font-extrabold tabular-nums ${
-                    youOwe ? 'text-neg' : 'text-pos'
-                  }`}
-                >
-                  {formatCurrency(s.amount)}
-                </span>
+                <div className="flex items-center gap-3">
+                  <span
+                    className={`text-2xl font-extrabold tabular-nums ${
+                      youOwe ? "text-neg" : "text-pos"
+                    }`}
+                  >
+                    {formatCurrency(s.amount)}
+                  </span>
+                  <button
+                    onClick={() => handleSettle(s, i)}
+                    disabled={isSettling}
+                    className="btn-secondary py-1.5 px-3 text-xs disabled:opacity-50"
+                  >
+                    {isSettling ? "Saving…" : "Settle Up"}
+                  </button>
+                </div>
               </li>
-            )
+            );
           })}
         </ul>
       )}
@@ -178,7 +240,7 @@ function BalanceSummary({ settlements, currentUserId, nameFor }) {
         </>
       )}
     </section>
-  )
+  );
 }
 
 function Members({ members }) {
@@ -193,12 +255,14 @@ function Members({ members }) {
           >
             <Avatar name={m.name} email={m.email} />
             <span className="text-sm text-ink">{m.name || m.email}</span>
-            {m.status === 'pending' && <span className="badge-pending">pending</span>}
+            {m.status === "pending" && (
+              <span className="badge-pending">pending</span>
+            )}
           </li>
         ))}
       </ul>
     </section>
-  )
+  );
 }
 
 function Expenses({ expenses, nameFor, onDelete, currentUserId, onEdit }) {
@@ -207,7 +271,7 @@ function Expenses({ expenses, nameFor, onDelete, currentUserId, onEdit }) {
       <div className="flex items-center justify-between">
         <SectionLabel>Expenses</SectionLabel>
         <span className="text-xs text-ink-muted">
-          {expenses.length} {expenses.length === 1 ? 'item' : 'items'}
+          {expenses.length} {expenses.length === 1 ? "item" : "items"}
         </span>
       </div>
       {expenses.length === 0 ? (
@@ -223,7 +287,9 @@ function Expenses({ expenses, nameFor, onDelete, currentUserId, onEdit }) {
             >
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="truncate text-sm font-medium text-ink">{e.description}</span>
+                  <span className="truncate text-sm font-medium text-ink">
+                    {e.description}
+                  </span>
                   {e.category && (
                     <span className="shrink-0 rounded-full border border-line bg-surface px-2 py-0.5 text-xs text-ink-muted">
                       {e.category}
@@ -234,13 +300,18 @@ function Expenses({ expenses, nameFor, onDelete, currentUserId, onEdit }) {
                   {nameFor(e.paidBy)} paid · {formatDate(e.date)}
                 </div>
                 {e.notes && (
-                  <div className="mt-0.5 text-xs text-ink-muted italic">{e.notes}</div>
+                  <div className="mt-0.5 text-xs text-ink-muted italic">
+                    {e.notes}
+                  </div>
                 )}
                 {e.splits && e.splits.length > 0 && (
                   <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-ink-muted">
                     {e.splits.map((split) => (
                       <span key={split.userId}>
-                        {nameFor(split.userId)}: <span className="font-medium text-ink">{formatCurrency(split.amount)}</span>
+                        {nameFor(split.userId)}:{" "}
+                        <span className="font-medium text-ink">
+                          {formatCurrency(split.amount)}
+                        </span>
                       </span>
                     ))}
                   </div>
@@ -249,7 +320,8 @@ function Expenses({ expenses, nameFor, onDelete, currentUserId, onEdit }) {
               <span className="text-base font-bold tabular-nums text-ink">
                 {formatCurrency(e.amount)}
               </span>
-              {(e.createdBy === currentUserId || (!e.createdBy && e.paidBy === currentUserId)) && (
+              {(e.createdBy === currentUserId ||
+                (!e.createdBy && e.paidBy === currentUserId)) && (
                 <button
                   onClick={() => onEdit(e)}
                   className="text-xs text-ink-muted transition-colors hover:text-ink"
@@ -268,11 +340,13 @@ function Expenses({ expenses, nameFor, onDelete, currentUserId, onEdit }) {
         </ul>
       )}
     </section>
-  )
+  );
 }
 
 function SectionLabel({ children }) {
   return (
-    <h2 className="text-xs font-medium uppercase tracking-wider text-ink-muted">{children}</h2>
-  )
+    <h2 className="text-xs font-medium uppercase tracking-wider text-ink-muted">
+      {children}
+    </h2>
+  );
 }
