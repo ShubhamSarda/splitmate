@@ -27,6 +27,7 @@ export default function Register() {
 
   return (
     <div className="min-h-screen bg-canvas">
+      <title>Create Account | Splitmate</title>
       <div className="page flex flex-col items-center pt-16 pb-10">
         <Link to="/">
           <img src="/logo.png" alt="Splitmate" className="h-8 w-auto" />

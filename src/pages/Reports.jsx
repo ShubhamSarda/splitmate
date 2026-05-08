@@ -24,6 +24,23 @@ const DATE_RANGE_OPTIONS = [
 
 const TABLE_LIMIT = 200;
 
+function emptyFallbackBuckets() {
+  const today = new Date();
+  return Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(today.getFullYear(), today.getMonth() - (5 - i), 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    return {
+      key,
+      label: d.toLocaleDateString(undefined, {
+        month: "short",
+        year: "numeric",
+      }),
+      amount: 0,
+      count: 0,
+    };
+  });
+}
+
 export default function Reports() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -63,6 +80,12 @@ export default function Reports() {
     [expenses, user.id, userEmail, rangeKey],
   );
 
+  const effectiveBuckets = useMemo(
+    () =>
+      chartData.buckets.length > 0 ? chartData.buckets : emptyFallbackBuckets(),
+    [chartData],
+  );
+
   const sortedExpenses = useMemo(
     () =>
       [...expenses].sort((a, b) =>
@@ -83,8 +106,9 @@ export default function Reports() {
 
   return (
     <div className="min-h-screen bg-canvas">
+      <title>Reports | Splitmate</title>
       <AppHeader />
-      <main className="page py-8 space-y-6">
+      <main className="page-app py-8 space-y-6">
         {/* Header row */}
         <div className="flex items-center justify-between gap-4">
           <h1 className="text-xl font-bold tracking-tight text-ink">Reports</h1>
@@ -150,110 +174,108 @@ export default function Reports() {
               </div>
             </div>
 
+            {/* Summary cards — only when there are matching expenses */}
+            {expenses.length > 0 && (
+              <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <StatCard
+                  label="Total paid by me"
+                  value={formatCurrency(stats.totalPaidByMe)}
+                />
+                <StatCard
+                  label="My share"
+                  value={formatCurrency(stats.myShare)}
+                />
+                <StatCard
+                  label="Expenses"
+                  value={stats.expenseCount.toString()}
+                />
+              </section>
+            )}
+
+            {/* Chart — always visible */}
+            <div className="card space-y-3">
+              <h2 className="text-sm font-semibold text-ink">
+                Spending over time
+              </h2>
+              <SpendingChart buckets={effectiveBuckets} />
+            </div>
+
+            {/* Table or empty state */}
             {expenses.length === 0 ? (
               <EmptyState
                 filtersActive={filtersActive}
                 onClear={clearFilters}
               />
             ) : (
-              <>
-                {/* Summary cards */}
-                <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  <StatCard
-                    label="Total paid by me"
-                    value={formatCurrency(stats.totalPaidByMe)}
-                  />
-                  <StatCard
-                    label="My share"
-                    value={formatCurrency(stats.myShare)}
-                  />
-                  <StatCard
-                    label="Expenses"
-                    value={stats.expenseCount.toString()}
-                  />
-                </section>
-
-                {/* Chart */}
-                {chartData.buckets.length > 0 && (
-                  <div className="card space-y-3">
-                    <h2 className="text-sm font-semibold text-ink">
-                      Spending over time
-                    </h2>
-                    <SpendingChart buckets={chartData.buckets} />
-                  </div>
+              <div className="card overflow-hidden p-0">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-line bg-canvas">
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
+                        Date
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
+                        Group
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
+                        Description
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
+                        Category
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
+                        Paid by
+                      </th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink-muted">
+                        Amount
+                      </th>
+                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink-muted">
+                        My share
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-line">
+                    {sortedExpenses.slice(0, TABLE_LIMIT).map((e) => {
+                      const share = getMyShare(e, user.id, userEmail);
+                      return (
+                        <tr
+                          key={e.id}
+                          onClick={() => navigate(`/group/${e.groupId}`)}
+                          className="cursor-pointer transition-colors hover:bg-canvas"
+                        >
+                          <td className="whitespace-nowrap px-4 py-3 text-ink-soft">
+                            {formatDate(e.date)}
+                          </td>
+                          <td className="px-4 py-3 text-ink-soft">
+                            {e._groupName}
+                          </td>
+                          <td className="px-4 py-3 font-medium text-ink">
+                            {e.description}
+                          </td>
+                          <td className="px-4 py-3">
+                            <CategoryBadge category={e.category || "Other"} />
+                          </td>
+                          <td className="px-4 py-3 text-ink-soft">
+                            {e._paidByName}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-ink">
+                            {formatCurrency(e.amount)}
+                          </td>
+                          <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-ink-soft">
+                            {share != null ? formatCurrency(share) : ""}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {sortedExpenses.length > TABLE_LIMIT && (
+                  <p className="border-t border-line px-4 py-3 text-sm text-ink-muted">
+                    Showing {TABLE_LIMIT} of {sortedExpenses.length} expenses.
+                    Narrow your filters or export CSV for the full list.
+                  </p>
                 )}
-
-                {/* Table */}
-                <div className="card overflow-hidden p-0">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-line bg-canvas">
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                          Date
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                          Group
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                          Description
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                          Category
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                          Paid by
-                        </th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                          Amount
-                        </th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                          My share
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-line">
-                      {sortedExpenses.slice(0, TABLE_LIMIT).map((e) => {
-                        const share = getMyShare(e, user.id, userEmail);
-                        return (
-                          <tr
-                            key={e.id}
-                            onClick={() => navigate(`/group/${e.groupId}`)}
-                            className="cursor-pointer transition-colors hover:bg-canvas"
-                          >
-                            <td className="whitespace-nowrap px-4 py-3 text-ink-soft">
-                              {formatDate(e.date)}
-                            </td>
-                            <td className="px-4 py-3 text-ink-soft">
-                              {e._groupName}
-                            </td>
-                            <td className="px-4 py-3 font-medium text-ink">
-                              {e.description}
-                            </td>
-                            <td className="px-4 py-3">
-                              <CategoryBadge category={e.category || "Other"} />
-                            </td>
-                            <td className="px-4 py-3 text-ink-soft">
-                              {e._paidByName}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-ink">
-                              {formatCurrency(e.amount)}
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-ink-soft">
-                              {share != null ? formatCurrency(share) : ""}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                  {sortedExpenses.length > TABLE_LIMIT && (
-                    <p className="border-t border-line px-4 py-3 text-sm text-ink-muted">
-                      Showing {TABLE_LIMIT} of {sortedExpenses.length} expenses.
-                      Narrow your filters or export CSV for the full list.
-                    </p>
-                  )}
-                </div>
-              </>
+              </div>
             )}
           </>
         )}
@@ -283,80 +305,158 @@ function CategoryBadge({ category }) {
   );
 }
 
+function fmtBarLabel(amount) {
+  if (amount >= 10000) return `$${(amount / 1000).toFixed(1)}k`;
+  if (amount >= 1000) return `$${(Math.round(amount / 100) / 10).toFixed(1)}k`;
+  return `$${Math.round(amount)}`;
+}
+
 function SpendingChart({ buckets }) {
-  const CHART_H = 160;
-  const LABEL_H = 36;
-  const TOTAL_H = CHART_H + LABEL_H;
-  const BAR_GAP = 4;
+  const [tooltip, setTooltip] = useState(null);
+
+  const LABEL_TOP = 24;
+  const CHART_H = 150;
+  const LABEL_H = 32;
+  const TOTAL_H = LABEL_TOP + CHART_H + LABEL_H;
+  const BAR_W = 44;
+  const BAR_GAP = 10;
   const n = buckets.length;
+  const totalW = Math.max(n * (BAR_W + BAR_GAP) - BAR_GAP, 300);
 
   const maxAmount = Math.max(...buckets.map((b) => b.amount), 0.01);
-  const barW = Math.max(8, (600 - (n - 1) * BAR_GAP) / n);
-  const totalW = Math.ceil(n * barW + (n - 1) * BAR_GAP);
-
-  // Show at most ~8 evenly-spaced labels to avoid crowding.
+  const allEmpty = buckets.every((b) => b.amount === 0);
   const labelStep = Math.max(1, Math.ceil(n / 8));
 
   return (
-    <div className="overflow-x-auto">
-      <svg
-        width={totalW}
-        height={TOTAL_H}
-        style={{ display: "block", minWidth: totalW }}
-        aria-hidden="true"
-      >
-        {/* Baseline */}
-        <line
-          x1={0}
-          y1={CHART_H}
-          x2={totalW}
-          y2={CHART_H}
-          stroke="#E8E4DE"
-          strokeWidth={1}
-        />
+    <>
+      <div className="overflow-x-auto">
+        <svg
+          width={totalW}
+          height={TOTAL_H}
+          style={{ display: "block", minWidth: totalW }}
+          onMouseLeave={() => setTooltip(null)}
+          aria-hidden="true"
+        >
+          {/* Baseline */}
+          <line
+            x1={0}
+            y1={LABEL_TOP + CHART_H}
+            x2={totalW}
+            y2={LABEL_TOP + CHART_H}
+            stroke="#E8E4DE"
+            strokeWidth={1}
+          />
 
-        {buckets.map((bucket, i) => {
-          const x = i * (barW + BAR_GAP);
-          const cx = x + barW / 2;
-          const barH =
-            bucket.amount > 0
-              ? Math.max(2, (bucket.amount / maxAmount) * CHART_H)
-              : 0;
-          const y = CHART_H - barH;
-          const showLabel = i % labelStep === 0 || i === n - 1;
+          {/* Empty state label */}
+          {allEmpty && (
+            <text
+              x={totalW / 2}
+              y={LABEL_TOP + CHART_H / 2 + 4}
+              textAnchor="middle"
+              fontSize={11}
+              fill="#A8A29E"
+            >
+              No spending data for this period
+            </text>
+          )}
 
-          return (
-            <g key={bucket.key}>
-              {barH > 0 ? (
-                <rect
-                  x={x}
-                  y={y}
-                  width={barW}
-                  height={barH}
-                  fill="#EA580C"
-                  rx={2}
-                >
-                  <title>
-                    {`$${bucket.amount.toFixed(2)} (${bucket.count} expense${bucket.count !== 1 ? "s" : ""})`}
-                  </title>
-                </rect>
-              ) : null}
-              {showLabel && (
-                <text
-                  x={cx}
-                  y={CHART_H + 20}
-                  textAnchor="middle"
-                  fontSize={9}
-                  fill="#A8A29E"
-                >
-                  {bucket.label}
-                </text>
-              )}
-            </g>
-          );
-        })}
-      </svg>
-    </div>
+          {buckets.map((bucket, i) => {
+            const x = i * (BAR_W + BAR_GAP);
+            const cx = x + BAR_W / 2;
+            const barH =
+              bucket.amount > 0
+                ? Math.max(4, (bucket.amount / maxAmount) * CHART_H)
+                : 0;
+            const barY = LABEL_TOP + CHART_H - barH;
+            const showXLabel = i % labelStep === 0 || i === n - 1;
+
+            return (
+              <g key={bucket.key}>
+                {/* Full-column hover zone */}
+                {bucket.amount > 0 && (
+                  <rect
+                    x={x}
+                    y={LABEL_TOP}
+                    width={BAR_W}
+                    height={CHART_H}
+                    fill="transparent"
+                    onMouseEnter={(e) =>
+                      setTooltip({ x: e.clientX, y: e.clientY, bucket })
+                    }
+                    onMouseMove={(e) =>
+                      setTooltip((t) =>
+                        t ? { ...t, x: e.clientX, y: e.clientY } : null,
+                      )
+                    }
+                    onMouseLeave={() => setTooltip(null)}
+                  />
+                )}
+
+                {/* Bar */}
+                {barH > 0 && (
+                  <rect
+                    x={x}
+                    y={barY}
+                    width={BAR_W}
+                    height={barH}
+                    fill="#EA580C"
+                    rx={3}
+                  />
+                )}
+
+                {/* Amount label above bar */}
+                {barH > 0 && (
+                  <text
+                    x={cx}
+                    y={barY - 5}
+                    textAnchor="middle"
+                    fontSize={9}
+                    fontWeight="600"
+                    fill="#78716C"
+                    style={{ fontVariantNumeric: "tabular-nums" }}
+                  >
+                    {fmtBarLabel(bucket.amount)}
+                  </text>
+                )}
+
+                {/* X-axis label */}
+                {showXLabel && (
+                  <text
+                    x={cx}
+                    y={LABEL_TOP + CHART_H + 20}
+                    textAnchor="middle"
+                    fontSize={9}
+                    fill="#A8A29E"
+                  >
+                    {bucket.label}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      {/* Hover tooltip — position:fixed escapes overflow clipping */}
+      {tooltip && (
+        <div
+          className="pointer-events-none fixed z-50 rounded-md bg-ink px-2.5 py-1.5 text-xs font-medium text-surface shadow"
+          style={{
+            left: tooltip.x,
+            top: tooltip.y - 12,
+            transform: "translate(-50%, -100%)",
+          }}
+        >
+          <span className="tabular-nums">
+            {formatCurrency(tooltip.bucket.amount)}
+          </span>
+          <span className="ml-1.5 font-normal opacity-60">
+            {tooltip.bucket.count}{" "}
+            {tooltip.bucket.count === 1 ? "expense" : "expenses"}
+          </span>
+        </div>
+      )}
+    </>
   );
 }
 

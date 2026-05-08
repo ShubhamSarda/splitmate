@@ -39,8 +39,9 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-canvas">
+      <title>Dashboard | Splitmate</title>
       <AppHeader />
-      <main className="page py-8 space-y-8">
+      <main className="page-app py-8 space-y-8">
         <div className="flex items-center justify-between">
           <h1 className="text-xl font-bold tracking-tight text-ink">
             Your groups

@@ -45,7 +45,7 @@ Data is held in four in-memory arrays (`_users`, `_groups`, `_expenses`, `_settl
 
 **Settlements**: `{ id, group_id, paid_by, paid_to, amount, settled_at }`. RLS allows any group member to insert provided `auth.uid()` is either `paid_by` or `paid_to`. In-memory shape: `{ id, groupId, paidBy, paidTo, amount, settledAt }`.
 
-New storage methods added this session:
+Storage methods:
 
 - `storage.renameGroup(groupId, newName)` — trims, validates, updates `groups` table and cache
 - `storage.removeMember(groupId, memberId)` — `memberId` is UUID for active members or email string for pending; callers must check expense involvement first
@@ -82,6 +82,24 @@ Auth state lives in `src/context/` split across three files:
 
 ### Utilities
 
+**`src/lib/format.js`** — shared formatting helpers:
+
+- `formatCurrency(amount)` — formats a number as `$X.XX` with leading minus for negatives
+- `formatDate(iso)` — formats ISO date string to a human-readable locale string
+- `todayISO()` — returns today's date as `YYYY-MM-DD`
+
+**`src/utils/monthlyReport.js`** — data helpers for the Reports page:
+
+- `filterExpenses(userId, userEmail, { dateRange, groupId, category })` — returns enriched expense objects (with `_groupName` and `_paidByName`) across all user groups matching the filters; only includes expenses where the user is payer or split participant
+- `getSummaryStats(expenses, userId, userEmail)` — returns `{ totalPaidByMe, myShare, expenseCount }`
+- `getMyShare(expense, userId, userEmail)` — returns the user's split amount for a single expense, or `null`
+- `getChartData(expenses, dateRange)` — returns bucketed `{ key, label, amount, count }[]` for bar chart; bucket size auto-scales (day/week/month/quarter) based on date span
+- `resolveDateRange(rangeKey)` — converts a range key (`"30d"`, `"3m"`, `"6m"`, `"year"`, `"all"`) to `{ start, end }` ISO strings or `null`
+
+**`src/utils/csvExport.js`** — per-user CSV export for the Reports page:
+
+- `downloadReport(expenses, userId, userEmail)` — builds a CSV (Date, Group, Description, Category, Total Amount, Paid By, My Share, Notes) and triggers browser download as `splitmate-report-YYYY-MM.csv`
+
 **`src/utils/groupExport.js`** — CSV export for group expense history:
 
 - `exportGroupHistory(groupId)` — returns a sorted (by date) array of plain objects `{ date, description, category, amount, paidBy, splitBetween, notes }` with member UUIDs/emails resolved to display names
@@ -100,6 +118,7 @@ The "Export history" button in `GroupDetail.jsx` calls `downloadGroupHistory` an
 | `/group/new`          | `CreateGroup`   | Protected                                                     |
 | `/group/:id`          | `GroupDetail`   | Protected                                                     |
 | `/group/:id/settings` | `GroupSettings` | Protected (admin only — redirects non-admins to `/group/:id`) |
+| `/reports`            | `Reports`       | Protected                                                     |
 
 ### Key conventions
 

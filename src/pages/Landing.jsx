@@ -1,13 +1,14 @@
-import { Link, Navigate } from 'react-router-dom'
-import { useAuth } from '../context/useAuth'
+import { Link, Navigate } from "react-router-dom";
+import { useAuth } from "../context/useAuth";
 
 export default function Landing() {
-  const { user, ready } = useAuth()
-  if (!ready) return null
-  if (user) return <Navigate to="/dashboard" replace />
+  const { user, ready } = useAuth();
+  if (!ready) return null;
+  if (user) return <Navigate to="/dashboard" replace />;
 
   return (
     <div className="min-h-screen bg-canvas">
+      <title>Splitmate - Split expenses, not friendships</title>
       <LandingNav />
       <Hero />
       <HowItWorks />
@@ -16,7 +17,7 @@ export default function Landing() {
       <FinalCTA />
       <LandingFooter />
     </div>
-  )
+  );
 }
 
 function LandingNav() {
@@ -37,7 +38,7 @@ function LandingNav() {
         </div>
       </div>
     </header>
-  )
+  );
 }
 
 function Hero() {
@@ -73,7 +74,7 @@ function Hero() {
         <HeroMock />
       </div>
     </section>
-  )
+  );
 }
 
 function HeroMock() {
@@ -82,16 +83,18 @@ function HeroMock() {
       <div className="mb-5 flex items-center justify-between">
         <div>
           <p className="font-semibold text-ink">Barcelona Trip</p>
-          <p className="mt-0.5 text-xs text-ink-muted">4 members · 6 expenses</p>
+          <p className="mt-0.5 text-xs text-ink-muted">
+            4 members · 6 expenses
+          </p>
         </div>
         <span className="badge-active">Active</span>
       </div>
 
       <div className="divide-y divide-line">
         {[
-          { name: 'Airbnb, 3 nights', amount: '€320', paidBy: 'Alex' },
-          { name: 'Dinner, La Barceloneta', amount: '€84', paidBy: 'Priya' },
-          { name: 'Groceries + drinks', amount: '€62', paidBy: 'Sam' },
+          { name: "Airbnb, 3 nights", amount: "€320", paidBy: "Alex" },
+          { name: "Dinner, La Barceloneta", amount: "€84", paidBy: "Priya" },
+          { name: "Groceries + drinks", amount: "€62", paidBy: "Sam" },
         ].map((e) => (
           <div
             key={e.name}
@@ -114,13 +117,12 @@ function HeroMock() {
         </p>
         <div className="space-y-2">
           {[
-            { from: 'Sam', to: 'Alex', amount: '€55' },
-            { from: 'Priya', to: 'Alex', amount: '€33' },
+            { from: "Sam", to: "Alex", amount: "€55" },
+            { from: "Priya", to: "Alex", amount: "€33" },
           ].map((s) => (
             <div key={s.from} className="flex items-center justify-between">
               <span className="text-ink">
-                {s.from}{' '}
-                <span className="text-ink-muted">pays</span> {s.to}
+                {s.from} <span className="text-ink-muted">pays</span> {s.to}
               </span>
               <span className="pill-neg">{s.amount}</span>
             </div>
@@ -128,7 +130,7 @@ function HeroMock() {
         </div>
       </div>
     </div>
-  )
+  );
 }
 
 function HowItWorks() {
@@ -141,18 +143,18 @@ function HowItWorks() {
         <div className="grid gap-10 sm:grid-cols-3 sm:gap-8 lg:gap-14">
           {[
             {
-              num: '01',
-              title: 'Create a group',
-              body: 'Name it after the trip or the flat. Invite people by email — they can join before or after they register.',
+              num: "01",
+              title: "Create a group",
+              body: "Name it after the trip or the flat. Invite people by email — they can join before or after they register.",
             },
             {
-              num: '02',
-              title: 'Log what was spent',
-              body: 'Add who paid and how much. Splitmate records each split to the cent, with category and full history.',
+              num: "02",
+              title: "Log what was spent",
+              body: "Add who paid and how much. Splitmate records each split to the cent, with category and full history.",
             },
             {
-              num: '03',
-              title: 'Settle in one round',
+              num: "03",
+              title: "Settle in one round",
               body: "When it's over, Splitmate finds the minimum number of payments to clear all debts. One screen, no spreadsheet.",
             },
           ].map((step) => (
@@ -171,28 +173,28 @@ function HowItWorks() {
         </div>
       </div>
     </section>
-  )
+  );
 }
 
 function Features() {
   const features = [
     {
-      label: 'Smart settlements',
-      body: 'No matter how tangled the debts, Splitmate finds the shortest path to zero. One round of transfers clears the whole group.',
+      label: "Smart settlements",
+      body: "No matter how tangled the debts, Splitmate finds the shortest path to zero. One round of transfers clears the whole group.",
     },
     {
-      label: 'Invite anyone, even non-members',
+      label: "Invite anyone, even non-members",
       body: "Add people by email before they sign up. Their splits are tracked from day one; they claim the account when they're ready.",
     },
     {
-      label: 'Full expense history',
-      body: 'Every payment stays on the record: what was spent, who paid, when. Edit or remove if something was logged wrong.',
+      label: "Full expense history",
+      body: "Every payment stays on the record: what was spent, who paid, when. Edit or remove if something was logged wrong.",
     },
     {
-      label: 'Works on any device',
-      body: 'No download required. Splitmate runs in any mobile browser, in exactly the same way as on a laptop.',
+      label: "Works on any device",
+      body: "No download required. Splitmate runs in any mobile browser, in exactly the same way as on a laptop.",
     },
-  ]
+  ];
 
   return (
     <section className="py-20 lg:py-28">
@@ -202,14 +204,14 @@ function Features() {
         </h2>
         <div className="grid sm:grid-cols-2">
           {features.map((f, i) => {
-            const isLeft = i % 2 === 0
-            const parts = ['py-8', 'border-line']
-            if (isLeft) parts.push('sm:pr-10', 'sm:border-r')
-            else parts.push('sm:pl-10')
-            if (i < features.length - 1) parts.push('border-b')
-            if (i >= 2 && i < features.length - 1) parts.push('sm:border-b-0')
+            const isLeft = i % 2 === 0;
+            const parts = ["py-8", "border-line"];
+            if (isLeft) parts.push("sm:pr-10", "sm:border-r");
+            else parts.push("sm:pl-10");
+            if (i < features.length - 1) parts.push("border-b");
+            if (i >= 2 && i < features.length - 1) parts.push("sm:border-b-0");
             return (
-              <div key={f.label} className={parts.join(' ')}>
+              <div key={f.label} className={parts.join(" ")}>
                 <h3 className="mb-2 text-base font-semibold text-ink">
                   {f.label}
                 </h3>
@@ -217,12 +219,12 @@ function Features() {
                   {f.body}
                 </p>
               </div>
-            )
+            );
           })}
         </div>
       </div>
     </section>
-  )
+  );
 }
 
 function SocialProof() {
@@ -241,7 +243,7 @@ function SocialProof() {
         </div>
       </div>
     </section>
-  )
+  );
 }
 
 function FinalCTA() {
@@ -263,7 +265,7 @@ function FinalCTA() {
         </Link>
       </div>
     </section>
-  )
+  );
 }
 
 function LandingFooter() {
@@ -278,5 +280,5 @@ function LandingFooter() {
         <p className="text-xs text-ink-muted">© 2026 Splitmate</p>
       </div>
     </footer>
-  )
+  );
 }

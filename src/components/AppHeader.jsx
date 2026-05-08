@@ -13,7 +13,7 @@ export default function AppHeader() {
 
   return (
     <header className="sticky top-0 z-30 h-14 border-b border-line bg-surface">
-      <div className="page flex h-full items-center justify-between">
+      <div className="page-app flex h-full items-center justify-between">
         <Link to={user ? "/dashboard" : "/"}>
           <img src="/logo.png" alt="Splitmate" className="h-8 w-auto" />
         </Link>

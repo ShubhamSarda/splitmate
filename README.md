@@ -9,7 +9,11 @@ An expense-splitting app for tracking shared costs within groups, with automatic
 - Split expenses equally across members or enter custom (manual) amounts per person
 - Edit or delete any expense you created or paid for
 - View per-group balances showing exactly who owes whom, minimised to the fewest possible transactions
+- Settle up directly between any two members and have balances update immediately
 - Dashboard summary of total owed to you, total you owe, and your net balance across all groups
+- Group settings: rename the group or remove members (admin only)
+- Export a group's full expense history as a CSV file
+- Reports page with date and category filters and CSV download
 
 ## Tech stack
 
@@ -54,31 +58,35 @@ src/
   context/          Auth — AuthContext.jsx (provider), AuthContextValue.js (context), useAuth.js (hook)
   data/             storage.js — in-memory cache + Supabase persistence; single source of truth for all data access
   lib/              balances.js (financial logic), format.js (currency/date helpers), supabase.js (client init)
-  pages/            One file per route — Landing, Login, Register, Dashboard, CreateGroup, GroupDetail
+  pages/            One file per route — Landing, Login, Register, Dashboard, CreateGroup, GroupDetail, GroupSettings, Reports
+  utils/            groupExport.js (group CSV export), csvExport.js, monthlyReport.js
 ```
 
 ## Available routes
 
-| Route        | Page        | Auth required                               |
-| ------------ | ----------- | ------------------------------------------- |
-| `/`          | Landing     | No (redirects to `/dashboard` if logged in) |
-| `/login`     | Login       | No                                          |
-| `/register`  | Register    | No                                          |
-| `/dashboard` | Dashboard   | Yes                                         |
-| `/group/new` | CreateGroup | Yes                                         |
-| `/group/:id` | GroupDetail | Yes                                         |
+| Route                 | Page          | Auth required                               |
+| --------------------- | ------------- | ------------------------------------------- |
+| `/`                   | Landing       | No (redirects to `/dashboard` if logged in) |
+| `/login`              | Login         | No                                          |
+| `/register`           | Register      | No                                          |
+| `/dashboard`          | Dashboard     | Yes                                         |
+| `/group/new`          | CreateGroup   | Yes                                         |
+| `/group/:id`          | GroupDetail   | Yes                                         |
+| `/group/:id/settings` | GroupSettings | Yes (admin only — non-admins redirected)    |
+| `/reports`            | Reports       | Yes                                         |
 
 ## Data storage
 
 Data is stored in Supabase and cached in memory at runtime. The Supabase tables are:
 
-| Table            | Contents                                             |
-| ---------------- | ---------------------------------------------------- |
-| `users`          | Registered user profiles (id, name, email)           |
-| `groups`         | Groups (id, name, created_by, created_at)            |
-| `group_members`  | Group membership rows (user_id, email, name, status) |
-| `expenses`       | Expense records (amount, paidBy, date, splits...)    |
-| `expense_splits` | Per-member split amounts for each expense            |
+| Table            | Contents                                                           |
+| ---------------- | ------------------------------------------------------------------ |
+| `users`          | Registered user profiles (id, name, email)                         |
+| `groups`         | Groups (id, name, created_by, created_at)                          |
+| `group_members`  | Group membership rows (user_id, email, name, status)               |
+| `expenses`       | Expense records (amount, paidBy, date, splits...)                  |
+| `expense_splits` | Per-member split amounts for each expense                          |
+| `settlements`    | Recorded settle-up payments (paid_by, paid_to, amount, settled_at) |
 
 Authentication is handled by Supabase Auth. Session is restored automatically on page load via `supabase.auth.onAuthStateChange`.
 

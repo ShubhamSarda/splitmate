@@ -25,8 +25,9 @@ export default function GroupSettings() {
 
   return (
     <div className="min-h-screen bg-canvas">
+      <title>Group Settings | Splitmate</title>
       <AppHeader />
-      <main className="page py-8 space-y-8">
+      <main className="page-app py-8 space-y-8">
         <div>
           <Link
             to={`/group/${id}`}

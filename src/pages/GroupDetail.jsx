@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useParams, Navigate } from "react-router-dom";
 import { PlusCircle, Settings } from "lucide-react";
 import { Download } from "lucide-react";
@@ -19,9 +19,13 @@ export default function GroupDetail() {
   const [editingExpense, setEditingExpense] = useState(null);
 
   const group = storage.getGroupById(id);
-  if (!group) return <Navigate to="/dashboard" replace />;
+  const isMember = group?.members.some((m) => m.userId === user.id);
 
-  const isMember = group.members.some((m) => m.userId === user.id);
+  useEffect(() => {
+    if (group?.name) document.title = `${group.name} | Splitmate`;
+  }, [group?.name]);
+
+  if (!group) return <Navigate to="/dashboard" replace />;
   if (!isMember) return <Navigate to="/dashboard" replace />;
 
   const expenses = storage.getActiveExpensesForGroup(group.id);
@@ -66,8 +70,9 @@ export default function GroupDetail() {
   return (
     <div className="min-h-screen bg-canvas">
       <AppHeader />
-      <main className="page py-8 space-y-8">
-        <div>
+      <main className="page-app py-8">
+        {/* Page header */}
+        <div className="mb-8">
           <Link
             to="/dashboard"
             className="text-sm text-ink-muted transition-colors hover:text-ink-soft"
@@ -96,10 +101,10 @@ export default function GroupDetail() {
                     ? "No expenses to export"
                     : "Download CSV"
                 }
-                className="btn-secondary gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="btn-secondary gap-2 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Download size={16} />
-                Export history
+                Export
               </button>
               <button
                 onClick={() => setShowModal(true)}
@@ -112,23 +117,31 @@ export default function GroupDetail() {
           </div>
         </div>
 
-        <BalanceSummary
-          settlements={settlements}
-          currentUserId={user.id}
-          nameFor={nameFor}
-          groupId={group.id}
-          onSettle={refresh}
-        />
+        {/* Two-column layout: expenses left (wider), balance+members right */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-5 lg:items-start">
+          {/* Left column — expenses, DOM-first so mobile stacks correctly */}
+          <div className="lg:col-span-3">
+            <Expenses
+              expenses={sortedExpenses}
+              nameFor={nameFor}
+              onDelete={handleDelete}
+              currentUserId={user.id}
+              onEdit={(e) => setEditingExpense(e)}
+            />
+          </div>
 
-        <Members members={group.members} />
-
-        <Expenses
-          expenses={sortedExpenses}
-          nameFor={nameFor}
-          onDelete={handleDelete}
-          currentUserId={user.id}
-          onEdit={(e) => setEditingExpense(e)}
-        />
+          {/* Right column — balance summary on top, members below */}
+          <div className="flex flex-col gap-5 lg:col-span-2">
+            <BalanceSummary
+              settlements={settlements}
+              currentUserId={user.id}
+              nameFor={nameFor}
+              groupId={group.id}
+              onSettle={refresh}
+            />
+            <Members members={group.members} />
+          </div>
+        </div>
       </main>
 
       {(showModal || editingExpense) && (
@@ -158,7 +171,20 @@ function BalanceSummary({
   groupId,
   onSettle,
 }) {
-  const [settling, setSettling] = useState(null); // settlement index being processed
+  const [settling, setSettling] = useState(null);
+
+  async function handleSettle(s, i) {
+    setSettling(i);
+    try {
+      await storage.recordSettlement(groupId, s.from, s.to, s.amount);
+      onSettle();
+    } catch (err) {
+      console.error("recordSettlement failed", err);
+      alert("Could not record settlement. Please try again.");
+    } finally {
+      setSettling(null);
+    }
+  }
 
   if (settlements.length === 0) {
     return (
@@ -176,70 +202,73 @@ function BalanceSummary({
     (s) => s.from !== currentUserId && s.to !== currentUserId,
   );
 
-  async function handleSettle(s, i) {
-    setSettling(i);
-    try {
-      await storage.recordSettlement(groupId, s.from, s.to, s.amount);
-      onSettle();
-    } catch (err) {
-      console.error("recordSettlement failed", err);
-      alert("Could not record settlement. Please try again.");
-    } finally {
-      setSettling(null);
-    }
-  }
-
   return (
     <section className="card">
       <SectionLabel>Balances</SectionLabel>
+
       {involves.length > 0 && (
-        <ul className="mt-3 divide-y divide-line">
+        <ul className="mt-3 space-y-2">
           {involves.map((s, i) => {
             const youOwe = s.from === currentUserId;
             const isSettling = settling === i;
             return (
               <li
                 key={i}
-                className="flex items-center justify-between gap-3 py-3 first:pt-0"
+                className={`rounded-lg px-3.5 py-3 ${
+                  youOwe ? "bg-neg-bg" : "bg-pos-bg"
+                }`}
               >
-                <span className="text-base text-ink">
-                  {youOwe ? (
-                    <>
-                      You owe{" "}
-                      <span className="font-semibold">{nameFor(s.to)}</span>
-                    </>
-                  ) : (
-                    <>
-                      <span className="font-semibold">{nameFor(s.from)}</span>{" "}
-                      owes you
-                    </>
-                  )}
-                </span>
-                <div className="flex items-center gap-3">
-                  <span
-                    className={`text-2xl font-extrabold tabular-nums ${
+                <div className="flex items-center justify-between gap-3">
+                  <p
+                    className={`text-sm font-medium ${
                       youOwe ? "text-neg" : "text-pos"
                     }`}
                   >
-                    {formatCurrency(s.amount)}
-                  </span>
-                  <button
-                    onClick={() => handleSettle(s, i)}
-                    disabled={isSettling}
-                    className="btn-secondary py-1.5 px-3 text-xs disabled:opacity-50"
-                  >
-                    {isSettling ? "Saving…" : "Settle Up"}
-                  </button>
+                    {youOwe ? (
+                      <>
+                        You owe{" "}
+                        <span className="font-semibold">{nameFor(s.to)}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="font-semibold">{nameFor(s.from)}</span>{" "}
+                        owes you
+                      </>
+                    )}
+                  </p>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span
+                      className={`text-[17px] font-extrabold tabular-nums ${
+                        youOwe ? "text-neg" : "text-pos"
+                      }`}
+                    >
+                      {youOwe ? "−" : "+"}
+                      {formatCurrency(s.amount)}
+                    </span>
+                    <button
+                      onClick={() => handleSettle(s, i)}
+                      disabled={isSettling}
+                      className="btn-secondary px-2.5 py-1 text-xs disabled:opacity-50"
+                    >
+                      {isSettling ? "Saving…" : "Settle up"}
+                    </button>
+                  </div>
                 </div>
               </li>
             );
           })}
         </ul>
       )}
+
       {others.length > 0 && (
         <>
-          {involves.length > 0 && <div className="my-4 border-t border-line" />}
-          <ul className="space-y-1.5">
+          {involves.length > 0 && (
+            <div className="my-3.5 border-t border-line" />
+          )}
+          <p className="mb-2 text-[11px] font-medium uppercase tracking-wider text-ink-muted">
+            Others
+          </p>
+          <ul className="space-y-2">
             {others.map((s, i) => (
               <li
                 key={`o${i}`}
@@ -248,7 +277,9 @@ function BalanceSummary({
                 <span>
                   {nameFor(s.from)} owes {nameFor(s.to)}
                 </span>
-                <span className="tabular-nums">{formatCurrency(s.amount)}</span>
+                <span className="tabular-nums font-medium text-ink-soft">
+                  {formatCurrency(s.amount)}
+                </span>
               </li>
             ))}
           </ul>
@@ -261,17 +292,24 @@ function BalanceSummary({
 function Members({ members }) {
   return (
     <section className="card">
-      <SectionLabel>Members ({members.length})</SectionLabel>
-      <ul className="mt-3 flex flex-wrap gap-2">
+      <div className="flex items-center justify-between">
+        <SectionLabel>Members</SectionLabel>
+        <span className="text-xs text-ink-muted">{members.length}</span>
+      </div>
+      <ul className="mt-3 space-y-1.5">
         {members.map((m) => (
           <li
             key={m.email}
-            className="flex items-center gap-2 rounded-full border border-line bg-surface py-1 pl-1 pr-3"
+            className="flex items-center justify-between gap-2 py-0.5"
           >
-            <Avatar name={m.name} email={m.email} />
-            <span className="text-sm text-ink">{m.name || m.email}</span>
+            <div className="flex min-w-0 items-center gap-2.5">
+              <Avatar name={m.name} email={m.email} />
+              <span className="truncate text-sm text-ink">
+                {m.name || m.email}
+              </span>
+            </div>
             {m.status === "pending" && (
-              <span className="badge-pending">pending</span>
+              <span className="badge-pending shrink-0">pending</span>
             )}
           </li>
         ))}
@@ -289,67 +327,77 @@ function Expenses({ expenses, nameFor, onDelete, currentUserId, onEdit }) {
           {expenses.length} {expenses.length === 1 ? "item" : "items"}
         </span>
       </div>
+
       {expenses.length === 0 ? (
-        <p className="mt-8 mb-4 text-center text-sm text-ink-muted">
+        <p className="mb-4 mt-8 text-center text-sm text-ink-muted">
           No expenses yet. Add the first one to get started.
         </p>
       ) : (
-        <ul className="mt-3 divide-y divide-line">
+        <ul className="mt-4 divide-y divide-line">
           {expenses.map((e) => (
-            <li
-              key={e.id}
-              className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
-            >
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="truncate text-sm font-medium text-ink">
-                    {e.description}
-                  </span>
-                  {e.category && (
-                    <span className="shrink-0 rounded-full border border-line bg-surface px-2 py-0.5 text-xs text-ink-muted">
-                      {e.category}
+            <li key={e.id} className="py-4 first:pt-0 last:pb-0">
+              <div className="flex items-start justify-between gap-4">
+                {/* Left: description, meta, splits */}
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-baseline gap-2">
+                    <span className="text-[15px] font-semibold leading-snug text-ink">
+                      {e.description}
                     </span>
+                    {e.category && (
+                      <span className="shrink-0 rounded-full border border-line bg-canvas px-2 py-0.5 text-[11px] font-medium text-ink-soft">
+                        {e.category}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-ink-muted">
+                    {nameFor(e.paidBy)} paid · {formatDate(e.date)}
+                  </p>
+                  {e.notes && (
+                    <p className="mt-0.5 text-xs italic text-ink-muted">
+                      {e.notes}
+                    </p>
+                  )}
+                  {e.splits && e.splits.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5">
+                      {e.splits.map((split) => (
+                        <span
+                          key={split.userId}
+                          className="text-xs text-ink-muted"
+                        >
+                          {nameFor(split.userId)}:{" "}
+                          <span className="font-medium tabular-nums text-ink-soft">
+                            {formatCurrency(split.amount)}
+                          </span>
+                        </span>
+                      ))}
+                    </div>
                   )}
                 </div>
-                <div className="mt-0.5 text-xs text-ink-muted">
-                  {nameFor(e.paidBy)} paid · {formatDate(e.date)}
+
+                {/* Right: amount + actions */}
+                <div className="flex shrink-0 flex-col items-end gap-1.5">
+                  <span className="text-[17px] font-bold tabular-nums text-ink">
+                    {formatCurrency(e.amount)}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {(e.createdBy === currentUserId ||
+                      (!e.createdBy && e.paidBy === currentUserId)) && (
+                      <button
+                        onClick={() => onEdit(e)}
+                        className="text-[11px] text-ink-muted transition-colors hover:text-ink"
+                      >
+                        Edit
+                      </button>
+                    )}
+                    <button
+                      onClick={() => onDelete(e.id)}
+                      className="text-[11px] text-ink-muted transition-colors hover:text-danger"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
-                {e.notes && (
-                  <div className="mt-0.5 text-xs text-ink-muted italic">
-                    {e.notes}
-                  </div>
-                )}
-                {e.splits && e.splits.length > 0 && (
-                  <div className="mt-1.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-ink-muted">
-                    {e.splits.map((split) => (
-                      <span key={split.userId}>
-                        {nameFor(split.userId)}:{" "}
-                        <span className="font-medium text-ink">
-                          {formatCurrency(split.amount)}
-                        </span>
-                      </span>
-                    ))}
-                  </div>
-                )}
               </div>
-              <span className="text-base font-bold tabular-nums text-ink">
-                {formatCurrency(e.amount)}
-              </span>
-              {(e.createdBy === currentUserId ||
-                (!e.createdBy && e.paidBy === currentUserId)) && (
-                <button
-                  onClick={() => onEdit(e)}
-                  className="text-xs text-ink-muted transition-colors hover:text-ink"
-                >
-                  Edit
-                </button>
-              )}
-              <button
-                onClick={() => onDelete(e.id)}
-                className="text-xs text-ink-muted transition-colors hover:text-danger"
-              >
-                Delete
-              </button>
             </li>
           ))}
         </ul>
