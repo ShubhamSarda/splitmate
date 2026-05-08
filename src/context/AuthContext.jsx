@@ -9,6 +9,7 @@ function sessionToUser(session) {
     id: session.user.id,
     name: session.user.user_metadata?.name ?? session.user.email,
     email: session.user.email,
+    avatar_url: session.user.user_metadata?.avatar_url ?? null,
   };
 }
 
@@ -88,8 +89,59 @@ export function AuthProvider({ children }) {
     await supabase.auth.signOut();
   }
 
+  async function updateName(newName) {
+    const trimmed = newName.trim();
+    const { error } = await supabase.auth.updateUser({
+      data: { name: trimmed },
+    });
+    if (error) return { ok: false, error: error.message };
+    await supabase.from("users").update({ name: trimmed }).eq("id", user.id);
+    const cached = storage.getUserById(user.id);
+    if (cached) cached.name = trimmed;
+    setUser((prev) => ({ ...prev, name: trimmed }));
+    return { ok: true };
+  }
+
+  async function updatePassword({ currentPassword, newPassword }) {
+    const { error: reAuthError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: currentPassword,
+    });
+    if (reAuthError)
+      return { ok: false, error: "Current password is incorrect." };
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  }
+
+  async function updateAvatar(publicUrl) {
+    const { error } = await supabase.auth.updateUser({
+      data: { avatar_url: publicUrl },
+    });
+    if (error) return { ok: false, error: error.message };
+    await supabase
+      .from("users")
+      .update({ avatar_url: publicUrl })
+      .eq("id", user.id);
+    const cached = storage.getUserById(user.id);
+    if (cached) cached.avatar_url = publicUrl;
+    setUser((prev) => ({ ...prev, avatar_url: publicUrl }));
+    return { ok: true };
+  }
+
   return (
-    <AuthContext.Provider value={{ user, ready, login, register, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        ready,
+        login,
+        register,
+        logout,
+        updateName,
+        updatePassword,
+        updateAvatar,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

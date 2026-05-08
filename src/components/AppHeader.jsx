@@ -25,6 +25,12 @@ export default function AppHeader() {
             >
               Reports
             </Link>
+            <Link
+              to="/profile"
+              className="text-sm text-ink-soft transition-colors hover:text-ink"
+            >
+              Profile
+            </Link>
             <span className="text-sm text-ink-soft">{user.name}</span>
             <button onClick={handleLogout} className="btn-secondary gap-2">
               <LogOut size={16} />
