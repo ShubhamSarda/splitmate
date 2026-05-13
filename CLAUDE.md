@@ -24,6 +24,8 @@ Required in `.env`:
 - `VITE_SUPABASE_URL` — Supabase project URL
 - `VITE_SUPABASE_PUBLISHABLE_KEY` — Supabase anon/publishable key
 
+**Worktree note**: `.env` lives at the repo root and is not copied into git worktrees automatically. If running a worktree dev server, copy `.env` from the repo root into the worktree directory or Vite will throw `supabaseUrl is required`.
+
 ### Data layer
 
 **`src/lib/supabase.js`** — initializes and exports the Supabase client using the two env vars above.
@@ -137,3 +139,16 @@ The "Export history" button in `GroupDetail.jsx` calls `downloadGroupHistory` an
 **Dashboard balance freshness**: `Dashboard.jsx` includes `location.key` in its `useMemo` dependency array so balances re-derive from the in-memory cache on every navigation. This is required because React Router does not unmount/remount the component on back-navigation — without `location.key`, settled debts would still appear after returning from a group page.
 
 **Member removal guard**: before calling `storage.removeMember`, check all active expenses for the group (`getActiveExpensesForGroup`) — if the member's key (UUID or email) appears as `paidBy` or in any `splits[].userId`, block removal and show "Cannot remove — member has existing expenses."
+
+**Responsive tables**: data tables (e.g. Reports expense list) are wrapped in `<div className="overflow-x-auto">` with `min-w-[640px]` on the `<table>` so all columns are accessible via horizontal scroll on mobile without layout breakage.
+
+**Mobile-responsive page headers**: action button rows use `flex-col sm:flex-row` so they stack vertically on mobile. Individual buttons use `flex-1 justify-center sm:flex-none` to be full-width tap targets on small screens.
+
+### Dev server config
+
+`.claude/launch.json` defines the project's dev servers for use with `preview_start`:
+
+| Name                | Command           | Port |
+| ------------------- | ----------------- | ---- |
+| `Splitmate Dev`     | `npm run dev`     | 5173 |
+| `Splitmate Preview` | `npm run preview` | 4173 |

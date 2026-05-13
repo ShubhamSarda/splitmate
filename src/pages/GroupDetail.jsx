@@ -79,15 +79,15 @@ export default function GroupDetail() {
           >
             ← Back to dashboard
           </Link>
-          <div className="mt-3 flex items-start justify-between gap-4">
+          <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <h1 className="text-xl font-bold tracking-tight text-ink">
               {group.name}
             </h1>
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2 sm:flex-row">
               {group.createdBy === user.id && (
                 <Link
                   to={`/group/${id}/settings`}
-                  className="btn-secondary gap-2"
+                  className="btn-secondary flex-1 justify-center gap-2 sm:flex-none"
                 >
                   <Settings size={16} />
                   Settings
@@ -101,14 +101,14 @@ export default function GroupDetail() {
                     ? "No expenses to export"
                     : "Download CSV"
                 }
-                className="btn-secondary gap-2 disabled:cursor-not-allowed disabled:opacity-40"
+                className="btn-secondary flex-1 justify-center gap-2 disabled:cursor-not-allowed disabled:opacity-40 sm:flex-none"
               >
                 <Download size={16} />
                 Export
               </button>
               <button
                 onClick={() => setShowModal(true)}
-                className="btn-primary gap-2"
+                className="btn-primary flex-1 justify-center gap-2 sm:flex-none"
               >
                 <PlusCircle size={16} />
                 Add expense
