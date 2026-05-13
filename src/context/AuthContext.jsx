@@ -1,14 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "../lib/supabase";
 import { storage } from "../data/storage";
 import { AuthContext } from "./AuthContextValue";
 
-function sessionToUser(session) {
+function buildUser(session) {
   if (!session?.user) return null;
+  const cached = storage.getUserById(session.user.id);
   return {
     id: session.user.id,
     name: session.user.user_metadata?.name ?? session.user.email,
     email: session.user.email,
+    createdAt: session.user.created_at,
+    avatarUrl: cached?.avatar_url ?? null,
   };
 }
 
@@ -23,7 +26,7 @@ export function AuthProvider({ children }) {
       if (event === "INITIAL_SESSION") {
         // Restoring a persisted session on page load — init before showing UI.
         if (session) await storage.init(session.user.id);
-        setUser(sessionToUser(session));
+        setUser(buildUser(session));
         setReady(true);
       } else if (event === "SIGNED_OUT") {
         storage.clear();
@@ -42,7 +45,7 @@ export function AuthProvider({ children }) {
     });
     if (error) return { ok: false, error: error.message };
     await storage.init(data.session.user.id);
-    setUser(sessionToUser(data.session));
+    setUser(buildUser(data.session));
     return { ok: true };
   }
 
@@ -79,7 +82,7 @@ export function AuthProvider({ children }) {
       }
     }
 
-    if (data.session) setUser(sessionToUser(data.session));
+    if (data.session) setUser(buildUser(data.session));
     return { ok: true };
   }
 
@@ -88,8 +91,14 @@ export function AuthProvider({ children }) {
     await supabase.auth.signOut();
   }
 
+  const updateUser = useCallback((patch) => {
+    setUser((prev) => (prev ? { ...prev, ...patch } : prev));
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, ready, login, register, logout }}>
+    <AuthContext.Provider
+      value={{ user, ready, login, register, logout, updateUser }}
+    >
       {children}
     </AuthContext.Provider>
   );

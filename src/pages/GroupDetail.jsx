@@ -337,22 +337,34 @@ function Members({ members }) {
         <span className="text-xs text-ink-muted">{members.length}</span>
       </div>
       <ul className="mt-3 space-y-1.5">
-        {members.map((m) => (
-          <li
-            key={m.email}
-            className="flex items-center justify-between gap-2 py-0.5"
-          >
-            <div className="flex min-w-0 items-center gap-2.5">
-              <Avatar name={m.name} email={m.email} />
-              <span className="truncate text-sm text-ink">
-                {m.name || m.email}
-              </span>
-            </div>
-            {m.status === "pending" && (
-              <span className="badge-pending shrink-0">pending</span>
-            )}
-          </li>
-        ))}
+        {members.map((m) => {
+          const cachedUser = m.userId ? storage.getUserById(m.userId) : null;
+          const avatarUrl = cachedUser?.avatar_url ?? null;
+          return (
+            <li
+              key={m.email}
+              className="flex items-center justify-between gap-2 py-0.5"
+            >
+              <div className="flex min-w-0 items-center gap-2.5">
+                {avatarUrl ? (
+                  <img
+                    src={avatarUrl}
+                    alt={m.name || m.email}
+                    className="h-7 w-7 shrink-0 rounded-full object-cover"
+                  />
+                ) : (
+                  <Avatar name={m.name} email={m.email} />
+                )}
+                <span className="truncate text-sm text-ink">
+                  {m.name || m.email}
+                </span>
+              </div>
+              {m.status === "pending" && (
+                <span className="badge-pending shrink-0">pending</span>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
