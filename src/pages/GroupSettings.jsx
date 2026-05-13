@@ -42,6 +42,7 @@ export default function GroupSettings() {
         </div>
 
         <RenameSection group={group} onRenamed={refresh} />
+        <BudgetSection group={group} onUpdate={refresh} />
         <MembersSection
           group={group}
           currentUserId={user.id}
@@ -113,6 +114,78 @@ function RenameSection({ group, onRenamed }) {
           className="btn-primary disabled:opacity-60"
         >
           {status === "saving" ? "Saving…" : "Save name"}
+        </button>
+      </form>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Budget section
+// ---------------------------------------------------------------------------
+
+function BudgetSection({ group, onUpdate }) {
+  const [budgetValue, setBudgetValue] = useState(
+    group.budget != null ? String(group.budget) : "",
+  );
+  const [status, setStatus] = useState(null); // null | 'saving' | 'success' | 'error'
+  const [errorMsg, setErrorMsg] = useState("");
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    const parsed = parseFloat(budgetValue);
+    const normalized =
+      budgetValue.trim() === "" || isNaN(parsed) || parsed <= 0 ? null : parsed;
+    setStatus("saving");
+    setErrorMsg("");
+    try {
+      await storage.updateGroupBudget(group.id, normalized);
+      setStatus("success");
+      onUpdate();
+      setTimeout(() => setStatus(null), 3000);
+    } catch (err) {
+      setErrorMsg(err.message || "Failed to update budget. Please try again.");
+      setStatus("error");
+    }
+  }
+
+  return (
+    <section className="card space-y-4">
+      <SectionLabel>Budget</SectionLabel>
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <label className="block">
+          <span className="field-label">
+            Total budget{" "}
+            <span className="font-normal text-ink-muted">(optional)</span>
+          </span>
+          <input
+            type="number"
+            min="0"
+            step="any"
+            value={budgetValue}
+            onChange={(e) => {
+              setBudgetValue(e.target.value);
+              setStatus(null);
+            }}
+            placeholder="e.g. 20000"
+            className="field"
+          />
+        </label>
+        <p className="text-sm text-ink-muted">
+          Leave empty to remove the budget.
+        </p>
+        {status === "error" && (
+          <p className="text-sm text-danger">{errorMsg}</p>
+        )}
+        {status === "success" && (
+          <p className="text-sm text-pos">Budget updated successfully.</p>
+        )}
+        <button
+          type="submit"
+          disabled={status === "saving"}
+          className="btn-primary disabled:opacity-60"
+        >
+          {status === "saving" ? "Saving…" : "Save budget"}
         </button>
       </form>
     </section>

@@ -9,6 +9,7 @@ export default function CreateGroup() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [name, setName] = useState("");
+  const [budget, setBudget] = useState("");
   const [emailInput, setEmailInput] = useState("");
   const [members, setMembers] = useState([]); // [{ email, registered, name? }]
   const [error, setError] = useState("");
@@ -48,10 +49,12 @@ export default function CreateGroup() {
       setError("Group name is required.");
       return;
     }
+    const parsedBudget = parseFloat(budget);
     const group = storage.createGroup({
       name,
       createdBy: user.id,
       memberEmails: members.map((m) => m.email),
+      budget: !isNaN(parsedBudget) && parsedBudget > 0 ? parsedBudget : null,
     });
     navigate(`/group/${group.id}`);
   }
@@ -83,6 +86,22 @@ export default function CreateGroup() {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Goa trip, Apartment 3B…"
                 autoFocus
+                className="field"
+              />
+            </label>
+
+            <label className="block">
+              <span className="field-label">
+                Budget{" "}
+                <span className="font-normal text-ink-muted">(optional)</span>
+              </span>
+              <input
+                type="number"
+                min="0"
+                step="any"
+                value={budget}
+                onChange={(e) => setBudget(e.target.value)}
+                placeholder="e.g. 20000"
                 className="field"
               />
             </label>

@@ -41,6 +41,7 @@ function toGroup(row) {
     name: row.name,
     createdBy: row.created_by,
     createdAt: new Date(row.created_at).getTime(),
+    budget: row.budget ?? null,
     members: (row.group_members ?? []).map((m) => ({
       userId: m.user_id,
       email: m.email,
@@ -107,7 +108,7 @@ export const storage = {
     const { data: groups } = await supabase
       .from("groups")
       .select(
-        "id, name, created_by, created_at, group_members(user_id, email, name, status)",
+        "id, name, created_by, created_at, budget, group_members(user_id, email, name, status)",
       )
       .in("id", groupIds);
     _groups = (groups ?? []).map(toGroup);
@@ -174,7 +175,7 @@ export const storage = {
     return _groups.filter((g) => g.members.some((m) => m.userId === userId));
   },
 
-  createGroup({ name, createdBy, memberEmails }) {
+  createGroup({ name, createdBy, memberEmails, budget = null }) {
     const creator = this.getUserById(createdBy);
     if (!creator) throw new Error("Creator not found");
 
@@ -204,11 +205,15 @@ export const storage = {
       );
     }
 
+    const normalizedBudget =
+      budget && Number(budget) > 0 ? Number(budget) : null;
+
     const group = {
       id: crypto.randomUUID(),
       name: name.trim(),
       createdBy,
       createdAt: Date.now(),
+      budget: normalizedBudget,
       members,
     };
     _groups.push(group);
@@ -226,6 +231,7 @@ export const storage = {
       name: group.name,
       created_by: group.createdBy,
       created_at: new Date(group.createdAt).toISOString(),
+      budget: group.budget ?? null,
     });
     if (gErr) throw gErr;
 
@@ -346,6 +352,23 @@ export const storage = {
     if (error) throw error;
 
     group.name = trimmed;
+  },
+
+  // Update a group's budget — updates the `groups` table and in-memory cache.
+  // Pass null (or 0 / empty) to remove the budget.
+  async updateGroupBudget(groupId, budget) {
+    const normalized = budget && Number(budget) > 0 ? Number(budget) : null;
+
+    const group = _groups.find((g) => g.id === groupId);
+    if (!group) throw new Error("Group not found.");
+
+    const { error } = await supabase
+      .from("groups")
+      .update({ budget: normalized })
+      .eq("id", groupId);
+    if (error) throw error;
+
+    group.budget = normalized;
   },
 
   // Remove a member from a group — deletes from `group_members` and removes
