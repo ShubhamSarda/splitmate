@@ -87,7 +87,7 @@ export const storage = {
     // All users visible to this account (permissive RLS allows lookup for invites)
     const { data: users } = await supabase
       .from("users")
-      .select("id, name, email");
+      .select("id, name, email, avatar_url");
     _users = users ?? [];
 
     // Groups this user is a member of
