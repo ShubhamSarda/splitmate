@@ -4,6 +4,7 @@ import { storage } from "../data/storage";
 import { useAuth } from "../context/useAuth";
 import { formatDate } from "../lib/format";
 import AppHeader from "../components/AppHeader";
+import Avatar from "../components/Avatar";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ACCEPTED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -218,11 +219,15 @@ export default function Profile() {
           {/* Avatar + change photo */}
           <div className="mb-6 flex flex-col items-center gap-3 sm:flex-row sm:gap-6">
             <div className="relative shrink-0">
-              <img
-                src={currentAvatarSrc ?? "/default-avatar.png"}
-                alt={user?.name ?? "Avatar"}
-                className="h-20 w-20 rounded-full object-cover sm:h-24 sm:w-24"
-              />
+              {currentAvatarSrc ? (
+                <img
+                  src={currentAvatarSrc}
+                  alt={user?.name ?? "Avatar"}
+                  className="h-20 w-20 rounded-full object-cover sm:h-24 sm:w-24"
+                />
+              ) : (
+                <Avatar name={user?.name} size={96} />
+              )}
               {photoLoading && (
                 <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/30">
                   <svg
