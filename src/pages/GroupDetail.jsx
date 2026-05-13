@@ -132,6 +132,9 @@ export default function GroupDetail() {
 
           {/* Right column — balance summary on top, members below */}
           <div className="flex flex-col gap-5 lg:col-span-2">
+            {group.budget > 0 && (
+              <BudgetCard expenses={expenses} budget={group.budget} />
+            )}
             <BalanceSummary
               settlements={settlements}
               currentUserId={user.id}
@@ -161,6 +164,43 @@ export default function GroupDetail() {
         />
       )}
     </div>
+  );
+}
+
+function BudgetCard({ expenses, budget }) {
+  const totalSpent = expenses.reduce((sum, e) => sum + e.amount, 0);
+  const remaining = budget - totalSpent;
+  const pct = Math.min((totalSpent / budget) * 100, 100);
+  const isOverBudget = totalSpent > budget;
+
+  return (
+    <section className="card space-y-3">
+      <SectionLabel>Budget</SectionLabel>
+      <p className="text-sm text-ink-soft">
+        <span className="font-semibold tabular-nums text-ink">
+          {formatCurrency(totalSpent)}
+        </span>{" "}
+        spent of {formatCurrency(budget)}
+      </p>
+      <div className="h-2 w-full overflow-hidden rounded-full bg-line">
+        <div
+          className="h-2 rounded-full transition-all duration-300"
+          style={{
+            width: `${pct}%`,
+            backgroundColor: isOverBudget
+              ? "var(--color-neg)"
+              : "var(--color-brand)",
+          }}
+        />
+      </div>
+      <p
+        className={`text-sm font-medium ${isOverBudget ? "text-neg" : "text-pos"}`}
+      >
+        {isOverBudget
+          ? `Over budget by ${formatCurrency(Math.abs(remaining))}`
+          : `${formatCurrency(remaining)} remaining`}
+      </p>
+    </section>
   );
 }
 
