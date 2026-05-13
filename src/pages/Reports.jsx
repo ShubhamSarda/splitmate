@@ -208,67 +208,69 @@ export default function Reports() {
               />
             ) : (
               <div className="card overflow-hidden p-0">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-line bg-canvas">
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                        Date
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                        Group
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                        Description
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                        Category
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                        Paid by
-                      </th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                        Amount
-                      </th>
-                      <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink-muted">
-                        My share
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-line">
-                    {sortedExpenses.slice(0, TABLE_LIMIT).map((e) => {
-                      const share = getMyShare(e, user.id, userEmail);
-                      return (
-                        <tr
-                          key={e.id}
-                          onClick={() => navigate(`/group/${e.groupId}`)}
-                          className="cursor-pointer transition-colors hover:bg-canvas"
-                        >
-                          <td className="whitespace-nowrap px-4 py-3 text-ink-soft">
-                            {formatDate(e.date)}
-                          </td>
-                          <td className="px-4 py-3 text-ink-soft">
-                            {e._groupName}
-                          </td>
-                          <td className="px-4 py-3 font-medium text-ink">
-                            {e.description}
-                          </td>
-                          <td className="px-4 py-3">
-                            <CategoryBadge category={e.category || "Other"} />
-                          </td>
-                          <td className="px-4 py-3 text-ink-soft">
-                            {e._paidByName}
-                          </td>
-                          <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-ink">
-                            {formatCurrency(e.amount)}
-                          </td>
-                          <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-ink-soft">
-                            {share != null ? formatCurrency(share) : ""}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                <div className="overflow-x-auto">
+                  <table className="w-full min-w-[640px] text-sm">
+                    <thead>
+                      <tr className="border-b border-line bg-canvas">
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
+                          Date
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
+                          Group
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
+                          Description
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
+                          Category
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
+                          Paid by
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink-muted">
+                          Amount
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink-muted">
+                          My share
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-line">
+                      {sortedExpenses.slice(0, TABLE_LIMIT).map((e) => {
+                        const share = getMyShare(e, user.id, userEmail);
+                        return (
+                          <tr
+                            key={e.id}
+                            onClick={() => navigate(`/group/${e.groupId}`)}
+                            className="cursor-pointer transition-colors hover:bg-canvas"
+                          >
+                            <td className="whitespace-nowrap px-4 py-3 text-ink-soft">
+                              {formatDate(e.date)}
+                            </td>
+                            <td className="px-4 py-3 text-ink-soft">
+                              {e._groupName}
+                            </td>
+                            <td className="px-4 py-3 font-medium text-ink">
+                              {e.description}
+                            </td>
+                            <td className="px-4 py-3">
+                              <CategoryBadge category={e.category || "Other"} />
+                            </td>
+                            <td className="px-4 py-3 text-ink-soft">
+                              {e._paidByName}
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-ink">
+                              {formatCurrency(e.amount)}
+                            </td>
+                            <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-ink-soft">
+                              {share != null ? formatCurrency(share) : ""}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
                 {sortedExpenses.length > TABLE_LIMIT && (
                   <p className="border-t border-line px-4 py-3 text-sm text-ink-muted">
                     Showing {TABLE_LIMIT} of {sortedExpenses.length} expenses.

@@ -12,8 +12,10 @@ An expense-splitting app for tracking shared costs within groups, with automatic
 - Settle up directly between any two members and have balances update immediately
 - Dashboard summary of total owed to you, total you owe, and your net balance across all groups
 - Group settings: rename the group or remove members (admin only)
+- Set an optional budget per group with a live progress bar showing spend vs. limit
 - Export a group's full expense history as a CSV file
 - Reports page with date and category filters and CSV download
+- Profile page with display name editing, profile photo upload, and password change
 
 ## Tech stack
 
@@ -58,7 +60,7 @@ src/
   context/          Auth — AuthContext.jsx (provider), AuthContextValue.js (context), useAuth.js (hook)
   data/             storage.js — in-memory cache + Supabase persistence; single source of truth for all data access
   lib/              balances.js (financial logic), format.js (currency/date helpers), supabase.js (client init)
-  pages/            One file per route — Landing, Login, Register, Dashboard, CreateGroup, GroupDetail, GroupSettings, Reports
+  pages/            One file per route — Landing, Login, Register, Dashboard, CreateGroup, GroupDetail, GroupSettings, Reports, Profile
   utils/            groupExport.js (group CSV export), csvExport.js, monthlyReport.js
 ```
 
@@ -74,6 +76,7 @@ src/
 | `/group/:id`          | GroupDetail   | Yes                                         |
 | `/group/:id/settings` | GroupSettings | Yes (admin only — non-admins redirected)    |
 | `/reports`            | Reports       | Yes                                         |
+| `/profile`            | Profile       | Yes                                         |
 
 ## Data storage
 
