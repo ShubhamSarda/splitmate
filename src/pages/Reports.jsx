@@ -209,28 +209,28 @@ export default function Reports() {
             ) : (
               <div className="card overflow-hidden p-0">
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[640px] text-sm">
+                  <table className="w-full min-w-[720px] text-sm">
                     <thead>
                       <tr className="border-b border-line bg-canvas">
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
+                        <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
                           Date
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
+                        <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
                           Group
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
+                        <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
                           Description
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
+                        <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
                           Category
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
+                        <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink-muted">
                           Paid by
                         </th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink-muted">
+                        <th className="px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink-muted">
                           Amount
                         </th>
-                        <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink-muted">
+                        <th className="whitespace-nowrap px-5 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink-muted">
                           My share
                         </th>
                       </tr>
@@ -244,25 +244,25 @@ export default function Reports() {
                             onClick={() => navigate(`/group/${e.groupId}`)}
                             className="cursor-pointer transition-colors hover:bg-canvas"
                           >
-                            <td className="whitespace-nowrap px-4 py-3 text-ink-soft">
+                            <td className="whitespace-nowrap px-5 py-3 text-ink-soft">
                               {formatDate(e.date)}
                             </td>
-                            <td className="px-4 py-3 text-ink-soft">
+                            <td className="px-5 py-3 text-ink-soft">
                               {e._groupName}
                             </td>
-                            <td className="px-4 py-3 font-medium text-ink">
+                            <td className="px-5 py-3 font-medium text-ink">
                               {e.description}
                             </td>
-                            <td className="px-4 py-3">
+                            <td className="px-5 py-3">
                               <CategoryBadge category={e.category || "Other"} />
                             </td>
-                            <td className="px-4 py-3 text-ink-soft">
+                            <td className="whitespace-nowrap px-5 py-3 text-ink-soft">
                               {e._paidByName}
                             </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-ink">
+                            <td className="whitespace-nowrap px-5 py-3 text-right tabular-nums text-ink">
                               {formatCurrency(e.amount)}
                             </td>
-                            <td className="whitespace-nowrap px-4 py-3 text-right tabular-nums text-ink-soft">
+                            <td className="whitespace-nowrap px-5 py-3 text-right tabular-nums text-ink-soft">
                               {share != null ? formatCurrency(share) : ""}
                             </td>
                           </tr>
