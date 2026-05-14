@@ -371,6 +371,37 @@ export const storage = {
     group.budget = normalized;
   },
 
+  // Add a member to an existing group by email. If the email belongs to a
+  // registered user, they are added as active; otherwise as pending.
+  async addMember(groupId, email) {
+    const trimmed = email.trim().toLowerCase();
+    if (!trimmed) throw new Error("Email cannot be empty.");
+
+    const group = _groups.find((g) => g.id === groupId);
+    if (!group) throw new Error("Group not found.");
+
+    if (group.members.some((m) => m.email === trimmed)) {
+      throw new Error("This person is already a member of this group.");
+    }
+
+    const existing = this.getUserByEmail(trimmed);
+    const member = existing
+      ? { userId: existing.id, email: existing.email, name: existing.name, status: "active" }
+      : { userId: null, email: trimmed, name: null, status: "pending" };
+
+    const { error } = await supabase.from("group_members").insert({
+      group_id: groupId,
+      user_id: member.userId,
+      email: member.email,
+      name: member.name,
+      status: member.status,
+    });
+    if (error) throw error;
+
+    group.members.push(member);
+    return member;
+  },
+
   // Remove a member from a group — deletes from `group_members` and removes
   // from the in-memory cache.  Callers must verify the member has no expense
   // involvement before calling this.

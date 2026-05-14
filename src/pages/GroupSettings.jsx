@@ -43,6 +43,7 @@ export default function GroupSettings() {
 
         <RenameSection group={group} onRenamed={refresh} />
         <BudgetSection group={group} onUpdate={refresh} />
+        <AddMemberSection group={group} onAdded={refresh} />
         <MembersSection
           group={group}
           currentUserId={user.id}
@@ -186,6 +187,80 @@ function BudgetSection({ group, onUpdate }) {
           className="btn-primary disabled:opacity-60"
         >
           {status === "saving" ? "Saving…" : "Save budget"}
+        </button>
+      </form>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Add member section
+// ---------------------------------------------------------------------------
+
+function AddMemberSection({ group, onAdded }) {
+  const [email, setEmail] = useState("");
+  const [status, setStatus] = useState(null); // null | 'saving' | 'success' | 'error'
+  const [errorMsg, setErrorMsg] = useState("");
+  const [addedEmail, setAddedEmail] = useState("");
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    const trimmed = email.trim().toLowerCase();
+    if (!trimmed) {
+      setErrorMsg("Please enter an email address.");
+      setStatus("error");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setErrorMsg("Please enter a valid email address.");
+      setStatus("error");
+      return;
+    }
+    setStatus("saving");
+    setErrorMsg("");
+    try {
+      await storage.addMember(group.id, trimmed);
+      setAddedEmail(trimmed);
+      setEmail("");
+      setStatus("success");
+      onAdded();
+    } catch (err) {
+      setErrorMsg(err.message || "Failed to add member. Please try again.");
+      setStatus("error");
+    }
+  }
+
+  return (
+    <section className="card space-y-4">
+      <SectionLabel>Add member</SectionLabel>
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <label className="block">
+          <span className="field-label">Email address</span>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => {
+              setEmail(e.target.value);
+              setStatus(null);
+            }}
+            placeholder="friend@example.com"
+            className="field"
+          />
+        </label>
+        {status === "error" && (
+          <p className="text-sm text-danger">{errorMsg}</p>
+        )}
+        {status === "success" && (
+          <p className="text-sm text-pos">
+            {addedEmail} added to the group.
+          </p>
+        )}
+        <button
+          type="submit"
+          disabled={status === "saving"}
+          className="btn-primary disabled:opacity-60"
+        >
+          {status === "saving" ? "Adding…" : "Add member"}
         </button>
       </form>
     </section>
