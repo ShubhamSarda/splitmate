@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { Download } from "lucide-react";
 import { useAuth } from "../context/useAuth";
@@ -314,151 +314,140 @@ function fmtBarLabel(amount) {
 }
 
 function SpendingChart({ buckets }) {
-  const [tooltip, setTooltip] = useState(null);
+  const [hoveredKey, setHoveredKey] = useState(null);
+  const wrapRef = useRef(null);
+  const [wrapW, setWrapW] = useState(600);
+
+  useEffect(() => {
+    const el = wrapRef.current;
+    if (!el) return;
+    setWrapW(el.clientWidth || 600);
+    const obs = new ResizeObserver(() => setWrapW(el.clientWidth || 600));
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
 
   const LABEL_TOP = 24;
   const CHART_H = 150;
   const LABEL_H = 32;
   const TOTAL_H = LABEL_TOP + CHART_H + LABEL_H;
-  const BAR_W = 44;
-  const BAR_GAP = 10;
   const n = buckets.length;
-  const totalW = Math.max(n * (BAR_W + BAR_GAP) - BAR_GAP, 300);
+
+  // Compute bar width to fill the container. gap = 20% of bar width, min 2px.
+  const MIN_BAR_W = 10;
+  const BAR_W =
+    n > 0 ? Math.max(MIN_BAR_W, Math.floor(wrapW / (n * 1.2 - 0.2))) : 44;
+  const BAR_GAP = n > 1 ? Math.max(2, Math.round(BAR_W * 0.2)) : 0;
+  const totalW = n > 0 ? n * (BAR_W + BAR_GAP) - BAR_GAP : wrapW;
+  const showAmountLabel = BAR_W >= 20;
 
   const maxAmount = Math.max(...buckets.map((b) => b.amount), 0.01);
   const allEmpty = buckets.every((b) => b.amount === 0);
   const labelStep = Math.max(1, Math.ceil(n / 8));
-
   return (
-    <>
-      <div className="overflow-x-auto">
-        <svg
-          width={totalW}
-          height={TOTAL_H}
-          style={{ display: "block", minWidth: totalW }}
-          onMouseLeave={() => setTooltip(null)}
-          aria-hidden="true"
-        >
-          {/* Baseline */}
-          <line
-            x1={0}
-            y1={LABEL_TOP + CHART_H}
-            x2={totalW}
-            y2={LABEL_TOP + CHART_H}
-            stroke="#E8E4DE"
-            strokeWidth={1}
-          />
+    <div ref={wrapRef} className="overflow-x-auto">
+      <svg
+        width={totalW}
+        height={TOTAL_H}
+        style={{ display: "block", minWidth: totalW }}
+        onMouseLeave={() => setHoveredKey(null)}
+        aria-hidden="true"
+      >
+        {/* Baseline */}
+        <line
+          x1={0}
+          y1={LABEL_TOP + CHART_H}
+          x2={totalW}
+          y2={LABEL_TOP + CHART_H}
+          stroke="#E8E4DE"
+          strokeWidth={1}
+        />
 
-          {/* Empty state label */}
-          {allEmpty && (
-            <text
-              x={totalW / 2}
-              y={LABEL_TOP + CHART_H / 2 + 4}
-              textAnchor="middle"
-              fontSize={11}
-              fill="#A8A29E"
-            >
-              No spending data for this period
-            </text>
-          )}
+        {/* Empty state label */}
+        {allEmpty && (
+          <text
+            x={totalW / 2}
+            y={LABEL_TOP + CHART_H / 2 + 4}
+            textAnchor="middle"
+            fontSize={11}
+            fill="#A8A29E"
+          >
+            No spending data for this period
+          </text>
+        )}
 
-          {buckets.map((bucket, i) => {
-            const x = i * (BAR_W + BAR_GAP);
-            const cx = x + BAR_W / 2;
-            const barH =
-              bucket.amount > 0
-                ? Math.max(4, (bucket.amount / maxAmount) * CHART_H)
-                : 0;
-            const barY = LABEL_TOP + CHART_H - barH;
-            const showXLabel = i % labelStep === 0 || i === n - 1;
+        {buckets.map((bucket, i) => {
+          const x = i * (BAR_W + BAR_GAP);
+          const cx = x + BAR_W / 2;
+          const barH =
+            bucket.amount > 0
+              ? Math.max(4, (bucket.amount / maxAmount) * CHART_H)
+              : 0;
+          const barY = LABEL_TOP + CHART_H - barH;
+          const showXLabel = i % labelStep === 0 || i === n - 1;
+          const isHovered = bucket.key === hoveredKey;
 
-            return (
-              <g key={bucket.key}>
-                {/* Full-column hover zone */}
-                {bucket.amount > 0 && (
-                  <rect
-                    x={x}
-                    y={LABEL_TOP}
-                    width={BAR_W}
-                    height={CHART_H}
-                    fill="transparent"
-                    onMouseEnter={(e) =>
-                      setTooltip({ x: e.clientX, y: e.clientY, bucket })
-                    }
-                    onMouseMove={(e) =>
-                      setTooltip((t) =>
-                        t ? { ...t, x: e.clientX, y: e.clientY } : null,
-                      )
-                    }
-                    onMouseLeave={() => setTooltip(null)}
-                  />
-                )}
+          return (
+            <g key={bucket.key}>
+              {/* Bar — darkens on hover */}
+              {barH > 0 && (
+                <rect
+                  x={x}
+                  y={barY}
+                  width={BAR_W}
+                  height={barH}
+                  fill={isHovered ? "#C2410C" : "#EA580C"}
+                  rx={3}
+                />
+              )}
 
-                {/* Bar */}
-                {barH > 0 && (
-                  <rect
-                    x={x}
-                    y={barY}
-                    width={BAR_W}
-                    height={barH}
-                    fill="#EA580C"
-                    rx={3}
-                  />
-                )}
+              {/* Amount label above bar — full amount on hover, short label otherwise */}
+              {barH > 0 && (showAmountLabel || isHovered) && (
+                <text
+                  x={cx}
+                  y={barY - 5}
+                  textAnchor="middle"
+                  fontSize={9}
+                  fontWeight="600"
+                  fill={isHovered ? "#1C1917" : "#78716C"}
+                  style={{ fontVariantNumeric: "tabular-nums" }}
+                >
+                  {isHovered
+                    ? formatCurrency(bucket.amount)
+                    : fmtBarLabel(bucket.amount)}
+                </text>
+              )}
 
-                {/* Amount label above bar */}
-                {barH > 0 && (
-                  <text
-                    x={cx}
-                    y={barY - 5}
-                    textAnchor="middle"
-                    fontSize={9}
-                    fontWeight="600"
-                    fill="#78716C"
-                    style={{ fontVariantNumeric: "tabular-nums" }}
-                  >
-                    {fmtBarLabel(bucket.amount)}
-                  </text>
-                )}
+              {/* Hover zone rendered last so it sits above bar in SVG z-order */}
+              {bucket.amount > 0 && (
+                <rect
+                  x={x}
+                  y={LABEL_TOP}
+                  width={BAR_W}
+                  height={CHART_H}
+                  fill="transparent"
+                  onMouseEnter={() => setHoveredKey(bucket.key)}
+                  onMouseLeave={() => setHoveredKey(null)}
+                />
+              )}
 
-                {/* X-axis label */}
-                {showXLabel && (
-                  <text
-                    x={cx}
-                    y={LABEL_TOP + CHART_H + 20}
-                    textAnchor="middle"
-                    fontSize={9}
-                    fill="#A8A29E"
-                  >
-                    {bucket.label}
-                  </text>
-                )}
-              </g>
-            );
-          })}
-        </svg>
-      </div>
-
-      {/* Hover tooltip — position:fixed escapes overflow clipping */}
-      {tooltip && (
-        <div
-          className="pointer-events-none fixed z-50 rounded-md bg-ink px-2.5 py-1.5 text-xs font-medium text-surface shadow"
-          style={{
-            left: tooltip.x,
-            top: tooltip.y - 12,
-            transform: "translate(-50%, -100%)",
-          }}
-        >
-          <span className="tabular-nums">
-            {formatCurrency(tooltip.bucket.amount)}
-          </span>
-          <span className="ml-1.5 font-normal opacity-60">
-            {tooltip.bucket.count}{" "}
-            {tooltip.bucket.count === 1 ? "expense" : "expenses"}
-          </span>
-        </div>
-      )}
-    </>
+              {/* X-axis label */}
+              {showXLabel && (
+                <text
+                  x={cx}
+                  y={LABEL_TOP + CHART_H + 20}
+                  textAnchor="middle"
+                  fontSize={9}
+                  fill="#A8A29E"
+                >
+                  {bucket.label}
+                </text>
+              )}
+            </g>
+          );
+        })}
+      </svg>
+    </div>
   );
 }
 
