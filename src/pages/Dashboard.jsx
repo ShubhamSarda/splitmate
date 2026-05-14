@@ -77,7 +77,7 @@ export default function Dashboard() {
         {data.cards.length === 0 ? (
           <EmptyState />
         ) : (
-          <>
+          <div className="space-y-4">
             <Tabs
               tab={tab}
               setTab={setTab}
@@ -86,7 +86,7 @@ export default function Dashboard() {
             />
             <section className="space-y-2">
               {visibleCards.length === 0 ? (
-                <p className="text-sm text-ink-muted text-center py-8">
+                <p className="py-10 text-center text-sm text-ink-muted">
                   {tab === "active" ? "No active groups." : "No settled groups yet."}
                 </p>
               ) : (
@@ -95,7 +95,7 @@ export default function Dashboard() {
                 ))
               )}
             </section>
-          </>
+          </div>
         )}
       </main>
     </div>
@@ -103,26 +103,50 @@ export default function Dashboard() {
 }
 
 function Tabs({ tab, setTab, activeCount, settledCount }) {
-  const base =
-    "px-4 py-2 text-sm font-semibold border-b-2 transition-colors focus:outline-none";
-  const active = "border-[#EA580C] text-[#EA580C]";
-  const inactive = "border-transparent text-ink-muted hover:text-ink";
-
   return (
-    <div className="flex border-b border-border">
-      <button
-        className={`${base} ${tab === "active" ? active : inactive}`}
+    <div className="flex border-b border-[#E8E4DE]">
+      <TabButton
+        label="Active"
+        count={activeCount}
+        selected={tab === "active"}
         onClick={() => setTab("active")}
-      >
-        Active ({activeCount})
-      </button>
-      <button
-        className={`${base} ${tab === "settled" ? active : inactive}`}
+      />
+      <TabButton
+        label="Settled"
+        count={settledCount}
+        selected={tab === "settled"}
         onClick={() => setTab("settled")}
-      >
-        Settled ({settledCount})
-      </button>
+      />
     </div>
+  );
+}
+
+function TabButton({ label, count, selected, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className={[
+        "relative flex items-center gap-2 px-3 pb-3 pt-1 text-sm border-b-2 -mb-px",
+        "transition-colors duration-150 ease-out",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EA580C]/40 focus-visible:ring-offset-1 rounded-sm",
+        selected
+          ? "border-[#EA580C] text-[#EA580C] font-semibold"
+          : "border-transparent text-[#78716C] font-medium hover:text-[#1C1917]",
+      ].join(" ")}
+    >
+      {label}
+      <span
+        className={[
+          "inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded text-xs font-semibold tabular-nums",
+          "transition-colors duration-150 ease-out",
+          selected
+            ? "bg-[#FFF4ED] text-[#EA580C]"
+            : "bg-[#F5F5F4] text-[#A8A29E]",
+        ].join(" ")}
+      >
+        {count}
+      </span>
+    </button>
   );
 }
 
