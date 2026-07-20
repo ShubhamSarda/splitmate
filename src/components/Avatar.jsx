@@ -10,7 +10,7 @@ function initialsFor(name, fallbackEmail) {
 export default function Avatar({ name, email, size = 28 }) {
   return (
     <div
-      className="flex items-center justify-center rounded-full bg-stone-100 text-[11px] font-semibold text-stone-600"
+      className="flex items-center justify-center rounded-full bg-stone-100 text-[11px] font-semibold text-stone-600 dark:bg-stone-700 dark:text-stone-300"
       style={{ width: size, height: size }}
     >
       {initialsFor(name, email)}

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { LogIn } from "lucide-react";
 import { useAuth } from "../context/useAuth";
+import Logo from "../components/Logo";
 
 export default function Login() {
   const { user, ready, login } = useAuth();
@@ -29,7 +30,7 @@ export default function Login() {
       <title>Sign In | Splitmate</title>
       <div className="page flex flex-col items-center pt-16 pb-10">
         <Link to="/">
-          <img src="/logo.png" alt="Splitmate" className="h-8 w-auto" />
+          <Logo />
         </Link>
         <div className="mt-8 w-full max-w-[400px] card">
           <h1 className="text-xl font-bold text-ink">Sign in</h1>

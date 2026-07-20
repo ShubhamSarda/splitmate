@@ -271,7 +271,7 @@ export default function Profile() {
                 Change photo
               </button>
               {photoError && (
-                <p className="text-sm text-red-600">{photoError}</p>
+                <p className="text-sm text-red-600 dark:text-red-400">{photoError}</p>
               )}
             </div>
           </div>
@@ -311,7 +311,7 @@ export default function Profile() {
               </button>
             </div>
             {nameError && (
-              <p className="mt-1 text-sm text-red-600">{nameError}</p>
+              <p className="mt-1 text-sm text-red-600 dark:text-red-400">{nameError}</p>
             )}
           </div>
 
@@ -346,12 +346,12 @@ export default function Profile() {
           </h2>
 
           {pwSuccess && (
-            <div className="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+            <div className="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-300">
               Password updated successfully.
             </div>
           )}
           {pwGenericError && (
-            <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            <div className="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800 dark:border-red-900 dark:bg-red-950 dark:text-red-300">
               {pwGenericError}
             </div>
           )}
@@ -374,7 +374,7 @@ export default function Profile() {
                 }}
               />
               {pwErrors.current && (
-                <p className="mt-1 text-sm text-red-600">{pwErrors.current}</p>
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{pwErrors.current}</p>
               )}
             </div>
 
@@ -395,7 +395,7 @@ export default function Profile() {
                 }}
               />
               {pwErrors.new && (
-                <p className="mt-1 text-sm text-red-600">{pwErrors.new}</p>
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{pwErrors.new}</p>
               )}
             </div>
 
@@ -416,7 +416,7 @@ export default function Profile() {
                 }}
               />
               {pwErrors.confirm && (
-                <p className="mt-1 text-sm text-red-600">{pwErrors.confirm}</p>
+                <p className="mt-1 text-sm text-red-600 dark:text-red-400">{pwErrors.confirm}</p>
               )}
             </div>
 

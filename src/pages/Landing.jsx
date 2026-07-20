@@ -1,5 +1,7 @@
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../context/useAuth";
+import Logo from "../components/Logo";
+import ThemeToggle from "../components/ThemeToggle";
 
 export default function Landing() {
   const { user, ready } = useAuth();
@@ -24,8 +26,9 @@ function LandingNav() {
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-canvas">
       <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-6">
-        <img src="/logo.png" alt="Splitmate" className="h-8 w-auto" />
+        <Logo />
         <div className="flex items-center gap-4">
+          <ThemeToggle />
           <Link
             to="/login"
             className="text-sm font-medium text-ink-soft transition-colors hover:text-ink"
@@ -272,11 +275,7 @@ function LandingFooter() {
   return (
     <footer className="border-t border-line bg-canvas py-8">
       <div className="mx-auto flex max-w-5xl items-center justify-between px-6">
-        <img
-          src="/logo.png"
-          alt="Splitmate"
-          className="h-6 w-auto opacity-60"
-        />
+        <Logo className="h-6 w-auto opacity-60" />
         <p className="text-xs text-ink-muted">© 2026 Splitmate</p>
       </div>
     </footer>

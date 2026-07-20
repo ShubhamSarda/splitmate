@@ -359,7 +359,7 @@ function SpendingChart({ buckets }) {
           y1={LABEL_TOP + CHART_H}
           x2={totalW}
           y2={LABEL_TOP + CHART_H}
-          stroke="#E8E4DE"
+          stroke="var(--color-line)"
           strokeWidth={1}
         />
 
@@ -370,7 +370,7 @@ function SpendingChart({ buckets }) {
             y={LABEL_TOP + CHART_H / 2 + 4}
             textAnchor="middle"
             fontSize={11}
-            fill="#A8A29E"
+            fill="var(--color-ink-muted)"
           >
             No spending data for this period
           </text>
@@ -396,7 +396,11 @@ function SpendingChart({ buckets }) {
                   y={barY}
                   width={BAR_W}
                   height={barH}
-                  fill={isHovered ? "#C2410C" : "#EA580C"}
+                  fill={
+                    isHovered
+                      ? "var(--color-brand-hover)"
+                      : "var(--color-brand)"
+                  }
                   rx={3}
                 />
               )}
@@ -409,7 +413,9 @@ function SpendingChart({ buckets }) {
                   textAnchor="middle"
                   fontSize={9}
                   fontWeight="600"
-                  fill={isHovered ? "#1C1917" : "#78716C"}
+                  fill={
+                    isHovered ? "var(--color-ink)" : "var(--color-ink-soft)"
+                  }
                   style={{ fontVariantNumeric: "tabular-nums" }}
                 >
                   {isHovered
@@ -438,7 +444,7 @@ function SpendingChart({ buckets }) {
                   y={LABEL_TOP + CHART_H + 20}
                   textAnchor="middle"
                   fontSize={9}
-                  fill="#A8A29E"
+                  fill="var(--color-ink-muted)"
                 >
                   {bucket.label}
                 </text>

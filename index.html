@@ -11,6 +11,19 @@
       rel="stylesheet"
     />
     <title>Splitmate</title>
+    <script>
+      // Apply the saved theme before first paint to avoid a light-mode flash.
+      // No saved preference -> light (the product default).
+      (function () {
+        try {
+          if (localStorage.getItem("splitmate_theme") === "dark") {
+            document.documentElement.classList.add("dark");
+          }
+        } catch {
+          /* localStorage unavailable — stay light */
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -1,6 +1,10 @@
 @import url("https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&display=swap");
 @import "tailwindcss";
 
+/* Class-based dark mode: `.dark` on <html> (set pre-paint in index.html,
+   toggled from the AppHeader menu, persisted as "splitmate_theme"). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --font-sans:
     "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
@@ -48,10 +52,56 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    color-scheme: light;
   }
+
+  /* Dark theme: re-map the semantic tokens rather than inverting.
+     Same warm stone family; state tints go dark with lifted text so
+     financial colors keep AA contrast on the dark surface. */
+  .dark {
+    color-scheme: dark;
+
+    /* Surfaces */
+    --color-canvas: #1c1917;
+    --color-surface: #292524;
+    --color-line: #44403c;
+
+    /* Brand — hover lightens on dark (darkening would sink into the bg) */
+    --color-brand-hover: #f97316;
+
+    /* Text */
+    --color-ink: #f5f5f4;
+    --color-ink-soft: #a8a29e;
+    --color-ink-muted: #78716c;
+
+    /* Financial states */
+    --color-pos-bg: #0c2f24;
+    --color-pos: #6ee7b7;
+    --color-neg-bg: #3f1a1a;
+    --color-neg: #fca5a5;
+    --color-mute-bg: #37332f;
+    --color-mute: #d6d3d1;
+
+    /* Pending badge */
+    --color-pending-bg: #422006;
+    --color-pending: #fcd34d;
+
+    /* Danger as text needs lifting on dark; solid danger fills opt back
+       into the saturated red via dark: overrides on .btn-danger */
+    --color-danger: #f87171;
+  }
+
   body {
     background-color: var(--color-canvas);
     color: var(--color-ink);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    body {
+      transition:
+        background-color 200ms ease,
+        color 200ms ease;
+    }
   }
   button:not(:disabled),
   [role="button"]:not(:disabled) {
@@ -86,7 +136,7 @@
     @apply inline-flex items-center justify-center rounded-lg border border-line bg-surface px-4 py-2.5 text-sm font-medium text-ink transition-colors hover:bg-canvas focus-visible:ring-[3px] focus-visible:ring-brand/15;
   }
   .btn-danger {
-    @apply inline-flex items-center justify-center rounded-lg bg-danger px-4 py-2.5 text-sm font-medium text-white transition-colors hover:opacity-90 focus-visible:ring-[3px] focus-visible:ring-red-500/20;
+    @apply inline-flex items-center justify-center rounded-lg bg-danger px-4 py-2.5 text-sm font-medium text-white transition-colors hover:opacity-90 focus-visible:ring-[3px] focus-visible:ring-red-500/20 dark:bg-[#dc2626];
   }
   .btn-link {
     @apply text-sm font-medium text-brand hover:text-brand-hover;
@@ -94,7 +144,7 @@
 
   /* Inputs */
   .field {
-    @apply block w-full rounded-lg border border-line bg-surface px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-muted transition-shadow focus:border-brand focus:ring-[3px] focus:ring-brand/15;
+    @apply block w-full rounded-lg border border-line bg-surface px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-muted transition-shadow focus:border-brand focus:ring-[3px] focus:ring-brand/15 dark:focus:ring-brand/25;
   }
   .field-label {
     @apply mb-1.5 block text-sm font-medium text-ink;
@@ -117,5 +167,23 @@
   }
   .pill-mute {
     @apply inline-flex items-center rounded-full bg-mute-bg px-3 py-1 text-[13px] font-semibold tabular-nums text-mute;
+  }
+}
+
+/* Applied to <html> for ~250ms around a theme toggle so the whole surface
+   crossfades instead of snapping. Unlayered on purpose: it must outrank
+   per-element transition utilities for the duration of the flip. */
+@media (prefers-reduced-motion: no-preference) {
+  .theme-transition,
+  .theme-transition *,
+  .theme-transition *::before,
+  .theme-transition *::after {
+    transition:
+      background-color 200ms ease,
+      color 200ms ease,
+      border-color 200ms ease,
+      fill 200ms ease,
+      stroke 200ms ease,
+      box-shadow 200ms ease !important;
   }
 }

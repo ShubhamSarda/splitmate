@@ -27,9 +27,15 @@ export default function Dashboard() {
         settlements,
       );
       // A group is settled only when it has expenses and all member balances are zero.
-      const allBalances = calculateNetBalances(expenses, g.members, settlements);
+      const allBalances = calculateNetBalances(
+        expenses,
+        g.members,
+        settlements,
+      );
       const hasExpenses = expenses.length > 0;
-      const allZero = Object.values(allBalances).every((b) => Math.abs(b) < 0.01);
+      const allZero = Object.values(allBalances).every(
+        (b) => Math.abs(b) < 0.01,
+      );
       const isSettled = hasExpenses && allZero;
       return { group: g, balance, isSettled };
     });
@@ -87,7 +93,9 @@ export default function Dashboard() {
             <section className="space-y-2">
               {visibleCards.length === 0 ? (
                 <p className="py-10 text-center text-sm text-ink-muted">
-                  {tab === "active" ? "No active groups." : "No settled groups yet."}
+                  {tab === "active"
+                    ? "No active groups."
+                    : "No settled groups yet."}
                 </p>
               ) : (
                 visibleCards.map(({ group, balance }) => (
@@ -104,7 +112,7 @@ export default function Dashboard() {
 
 function Tabs({ tab, setTab, activeCount, settledCount }) {
   return (
-    <div className="flex border-b border-[#E8E4DE]">
+    <div className="flex border-b border-line">
       <TabButton
         label="Active"
         count={activeCount}
@@ -128,10 +136,10 @@ function TabButton({ label, count, selected, onClick }) {
       className={[
         "relative flex items-center gap-2 px-3 pb-3 pt-1 text-sm border-b-2 -mb-px",
         "transition-colors duration-150 ease-out",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#EA580C]/40 focus-visible:ring-offset-1 rounded-sm",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40 focus-visible:ring-offset-1 focus-visible:ring-offset-canvas rounded-sm",
         selected
-          ? "border-[#EA580C] text-[#EA580C] font-semibold"
-          : "border-transparent text-[#78716C] font-medium hover:text-[#1C1917]",
+          ? "border-brand text-brand font-semibold"
+          : "border-transparent text-ink-soft font-medium hover:text-ink",
       ].join(" ")}
     >
       {label}
@@ -139,9 +147,7 @@ function TabButton({ label, count, selected, onClick }) {
         className={[
           "inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded text-xs font-semibold tabular-nums",
           "transition-colors duration-150 ease-out",
-          selected
-            ? "bg-[#FFF4ED] text-[#EA580C]"
-            : "bg-[#F5F5F4] text-[#A8A29E]",
+          selected ? "bg-brand/10 text-brand" : "bg-mute-bg text-ink-soft",
         ].join(" ")}
       >
         {count}
